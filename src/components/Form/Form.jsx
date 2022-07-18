@@ -116,7 +116,17 @@ const TheForm = () => {
         setResponseData(parsedResponse.data);
         setResponseSignature(parsedResponse.signature);
       } else {
-        setError(parsedResponse.message);
+        let errorMessage = parsedResponse.message;
+
+        if (
+          errorMessage.toLowerCase().includes('subscription required') ||
+          errorMessage.toLowerCase().includes('subscription expired') ||
+          errorMessage.toLowerCase().includes('for this month')
+        ) {
+          errorMessage +=
+            '. Please, visit https://dashboard.purefi.io/subscription and subscribe';
+        }
+        setError(errorMessage);
       }
     } catch (error) {
       setResponseData('');

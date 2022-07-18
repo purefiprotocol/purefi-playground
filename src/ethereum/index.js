@@ -27,7 +27,7 @@ class Ethereum {
     const provider = new ethers.providers.Web3Provider(newProvider, 'any');
     provider.on('network', ({ chainId }) => {
       this.network = NETWORKS[chainId];
-      this.provider = new ethers.providers.Web3Provider(newProvider);
+      this.provider = new ethers.providers.Web3Provider(newProvider, 'any');
       networkChanged(chainId);
     });
   };
