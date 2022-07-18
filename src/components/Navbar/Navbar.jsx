@@ -1,3 +1,5 @@
+/* eslint-disable jsx-a11y/anchor-is-valid */
+
 import { useWallet } from '../../hooks';
 import { BSC_MAINNET_NETWORK, NETWORKS } from '../../config';
 import { WalletType } from '../../constants';
@@ -43,7 +45,7 @@ const Navbar = () => {
 
   return (
     <nav className="navbar navbar-dark bg-dark navbar-custom">
-      <a href="" className="navbar-brand" onClick={(e) => e.preventDefault()}>
+      <a href="/" className="navbar-brand" onClick={(e) => e.preventDefault()}>
         SDK Subscription Demo
       </a>
 
