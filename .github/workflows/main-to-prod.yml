@@ -8,7 +8,6 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK }}
-      DISABLE_ESLINT_PLUGIN: 'true'
     steps:
       - name: Check out main branch
         uses: actions/checkout@v2
