@@ -1,0 +1,30 @@
+name: Deploy main -> prod (manual)
+on: workflow_dispatch
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK }}
+      DISABLE_ESLINT_PLUGIN: 'true'
+    steps:
+      - name: Check out main branch
+        uses: actions/checkout@v2
+        with:
+          ref: main
+
+      - name: Install dependencies with yarn
+        run: yarn
+
+      - name: Build artifact
+        run: yarn build
+
+      - name: Deploy artifact to S3 and invalidate Cloudfront
+        uses: lbertenasco/s3-deploy@v1
+        with:
+          folder: build
+          bucket: ${{ secrets.AWS_PROD_BUCKET }}
+          dist-id: ${{ secrets.AWS_PROD_CLOUDFRONT_DIST_ID }}
+          invalidation: / *
