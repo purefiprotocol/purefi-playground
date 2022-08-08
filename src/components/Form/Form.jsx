@@ -124,7 +124,7 @@ const TheForm = () => {
           errorMessage.toLowerCase().includes('for this month')
         ) {
           errorMessage +=
-            '. Please, visit https://dashboard.purefi.io/subscription and subscribe';
+            '. Please, visit https://dashboard.purefi.io/subscription and subscribe or renew/upgrade existing plan';
         }
         setError(errorMessage);
       }
@@ -172,7 +172,7 @@ const TheForm = () => {
   return (
     <Container fluid className="mb-4">
       {error && (
-        <div className="alert alert-danger mb-2" role="alert">
+        <div className="alert alert-danger mb-3" role="alert">
           {error}
           <button
             type="button"
@@ -187,7 +187,7 @@ const TheForm = () => {
       )}
 
       {txnError && (
-        <div className="alert alert-danger mb-2" role="alert">
+        <div className="alert alert-danger mb-3" role="alert">
           {txnError}
           <button
             type="button"
