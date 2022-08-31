@@ -4,8 +4,9 @@ import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Button from 'react-bootstrap/Button';
-import { signMessage } from '../../utils';
+import { PureFI } from '@purefi/verifier-sdk';
 import { useBuyContract, useWallet } from '../../hooks';
+import ethereum from '../../ethereum';
 
 const TheForm = () => {
   const signFormRef = useRef();
@@ -20,6 +21,15 @@ const TheForm = () => {
     setResponseData(undefined);
     setResponseSignature('');
   }, [account]);
+
+  useEffect(() => {
+    if (account && activeNetwork) {
+      const signer = ethereum.getSigner();
+      PureFI.setSigner(signer);
+    } else {
+      PureFI.unsetSigner();
+    }
+  }, [account, activeNetwork]);
 
   const [address, setAddress] = useState('');
   const [ruleId, setRuleId] = useState('');
@@ -76,10 +86,13 @@ const TheForm = () => {
           chainId: Number(chainId),
         };
 
-        const result = await signMessage(JSON.stringify(data));
+        const message = JSON.stringify(data);
+        const signer = PureFI.getSigner();
 
-        setMessage(result.message);
-        setClientSignature(result.signature);
+        const signature = await signer.signMessage(message);
+
+        setMessage(message);
+        setClientSignature(signature);
       } catch (error) {
         setError(error.message);
       } finally {
@@ -97,37 +110,11 @@ const TheForm = () => {
         signature: clientSignature,
       };
 
-      const response = await fetch(
-        'https://issuer.app.purefi.io/api/aml/address/check',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await PureFI.verifyRule(payload);
 
-      const parsedResponse = await response.json();
-
-      if (response.ok) {
-        setError('');
-
-        setResponseData(parsedResponse.data);
-        setResponseSignature(parsedResponse.signature);
-      } else {
-        let errorMessage = parsedResponse.message;
-
-        if (
-          errorMessage.toLowerCase().includes('subscription required') ||
-          errorMessage.toLowerCase().includes('subscription expired') ||
-          errorMessage.toLowerCase().includes('for this month')
-        ) {
-          errorMessage +=
-            '. Please, visit https://dashboard.purefi.io/subscription and subscribe or renew/upgrade existing plan';
-        }
-        setError(errorMessage);
-      }
+      setError('');
+      setResponseData(response.data);
+      setResponseSignature(response.signature);
     } catch (error) {
       setResponseData('');
       setError(error.message);

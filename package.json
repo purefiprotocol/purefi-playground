@@ -6,6 +6,7 @@
     "@ethersproject/abstract-provider": "^5.6.1",
     "@ethersproject/bignumber": "^5.6.2",
     "@metamask/detect-provider": "^1.2.0",
+    "@purefi/verifier-sdk": "^5.0.0-alpha.0",
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^13.3.0",
     "@testing-library/user-event": "^13.5.0",
@@ -21,7 +22,7 @@
   },
   "resolutions": {
     "autoprefixer": "10.4.5"
-},
+  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
