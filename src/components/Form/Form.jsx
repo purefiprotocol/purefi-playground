@@ -75,6 +75,8 @@ const TheForm = () => {
     setRuleId(ruleType2RuleId[ruleType]);
     setMessage('');
     setClientSignature('');
+    setResponseData(undefined);
+    setResponseSignature('');
   }, [ruleType]);
 
   useEffect(() => {
@@ -132,6 +134,8 @@ const TheForm = () => {
 
         setMessage(message);
         setClientSignature(signature);
+        setResponseData(undefined);
+        setResponseSignature('');
       } catch (error) {
         setError(error.message);
       } finally {
@@ -143,6 +147,8 @@ const TheForm = () => {
   const submitRequestHandler = async (e) => {
     try {
       setRequestLoading(true);
+      setResponseData();
+      setResponseSignature('');
 
       const payload = {
         message,
@@ -155,7 +161,8 @@ const TheForm = () => {
       setResponseData(response.data);
       setResponseSignature(response.signature);
     } catch (error) {
-      setResponseData('');
+      setResponseData();
+      setResponseSignature('');
       setError(error.message);
     } finally {
       setRequestLoading(false);
