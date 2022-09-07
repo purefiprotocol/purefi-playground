@@ -101,13 +101,15 @@ class Ethereum {
 
   buy = async (targetAddress, value, data, signature, ruleType) => {
     const signer = this.provider.getSigner();
+    const buyContractAddress = BUY_CONTRACT_ADDRESS[this.network.networkId];
+
     const contract = new ethers.Contract(
-      BUY_CONTRACT_ADDRESS,
+      buyContractAddress,
       BuyContractABI,
       signer
     );
 
-    // BNB value
+    // BNB/ETH value
     const amount = parseFixed(value.toString(), 18).toString();
 
     if (ruleType === 0) {

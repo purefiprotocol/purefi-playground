@@ -8,6 +8,7 @@ import { PureFI } from '@purefi/verifier-sdk';
 import { useBuyContract, useWallet } from '../../hooks';
 import ethereum from '../../ethereum';
 import { Toggle } from '../Toggle';
+import { NETWORKS } from '../../config';
 
 const ruleTypeOptions = [
   {
@@ -44,7 +45,7 @@ const TheForm = () => {
 
   const [message, setMessage] = useState('');
   const [clientSignature, setClientSignature] = useState('');
-  const [bnbValue, setBnbValue] = useState('0.001');
+  const [bnbValue, setBnbValue] = useState('0.00001');
 
   const [signLoading, setSignLoading] = useState(false);
   const [requestLoading, setRequestLoading] = useState(false);
@@ -61,6 +62,10 @@ const TheForm = () => {
     txnError,
     clearTxnError,
   } = useBuyContract();
+
+  useEffect(() => {
+    setChainId(networkId);
+  }, [networkId]);
 
   useEffect(() => {
     setAddress(account);
@@ -197,7 +202,7 @@ const TheForm = () => {
     return (
       <Container fluid className="mb-4">
         <div className="alert alert-primary mb-2" role="alert">
-          Switch network to BNB Smart Chain (BEP-20)
+          Switch network to BNB Smart Chain (BEP-20) or Ethereum
         </div>
       </Container>
     );
@@ -275,7 +280,7 @@ const TheForm = () => {
                 onChange={dummyChangeHandler}
                 step="1"
                 min="431001"
-                max="431100"
+                max="731100"
                 placeholder="431040"
                 readOnly
                 required
@@ -287,8 +292,10 @@ const TheForm = () => {
                 as="select"
                 name="chainId"
                 aria-label="Default select example"
-                value={chainId}
+                value={chainId || ''}
                 onChange={chainChangeHandler}
+                readOnly
+                disabled
                 required
               >
                 <option value="1">Ethereum</option>
@@ -350,14 +357,16 @@ const TheForm = () => {
           <h4 className="mb-4">Issuer Response</h4>
           <Form ref={buyFormRef}>
             <Form.Group className="mb-3">
-              <Form.Label htmlFor="bnbValue">Buy for BNB</Form.Label>
+              <Form.Label htmlFor="bnbValue">
+                Buy for {NETWORKS[networkId].symbol}
+              </Form.Label>
               <Form.Control
                 id="bnbValue"
                 type="number"
                 value={bnbValue}
                 onChange={(e) => setBnbValue(e.target.value)}
-                min="0.001"
-                step="0.001"
+                min="0.00001"
+                step="0.00001"
                 placeholder="0.01"
                 required
               />
@@ -423,11 +432,11 @@ const TheForm = () => {
               {txnHash && (
                 <a
                   className="text-truncate ml-2"
-                  href={`https://bscscan.com/tx/${txnHash}`}
+                  href={`${NETWORKS[networkId].explorerUrl}/tx/${txnHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  BscScan
+                  {NETWORKS[networkId].explorerName}
                 </a>
               )}
             </Form.Group>
