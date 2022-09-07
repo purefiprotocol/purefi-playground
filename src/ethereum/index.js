@@ -99,7 +99,7 @@ class Ethereum {
 
   getSigner = () => this.provider.getSigner();
 
-  buy = async (targetAddress, value, data, signature) => {
+  buy = async (targetAddress, value, data, signature, ruleType) => {
     const signer = this.provider.getSigner();
     const contract = new ethers.Contract(
       BUY_CONTRACT_ADDRESS,
@@ -110,10 +110,39 @@ class Ethereum {
     // BNB value
     const amount = parseFixed(value.toString(), 18).toString();
 
-    const createdBuy = await contract.buyFor(targetAddress, data, signature, {
-      value: amount,
-    });
-    return createdBuy;
+    if (ruleType === 0) {
+      const createdBuy = await contract.buyForWithAML(
+        targetAddress,
+        data,
+        signature,
+        {
+          value: amount,
+        }
+      );
+      return createdBuy;
+    } else if (ruleType === 1) {
+      const createdBuy = await contract.buyForWithKYC(
+        targetAddress,
+        data,
+        signature,
+        {
+          value: amount,
+        }
+      );
+      return createdBuy;
+    } else if (ruleType === 2) {
+      const createdBuy = await contract.buyForWithKYCAML(
+        targetAddress,
+        data,
+        signature,
+        {
+          value: amount,
+        }
+      );
+      return createdBuy;
+    }
+
+    throw new Error('Unknown rule type provided');
   };
 }
 

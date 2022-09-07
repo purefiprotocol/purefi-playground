@@ -7,32 +7,39 @@ import Button from 'react-bootstrap/Button';
 import { PureFI } from '@purefi/verifier-sdk';
 import { useBuyContract, useWallet } from '../../hooks';
 import ethereum from '../../ethereum';
+import { Toggle } from '../Toggle';
+
+const ruleTypeOptions = [
+  {
+    label: 'AML',
+    value: 0,
+  },
+  {
+    label: 'KYC',
+    value: 1,
+  },
+  {
+    label: 'AML + KYC',
+    value: 2,
+  },
+];
+
+const defaultRuleType = ruleTypeOptions[0].value;
+
+const ruleType2RuleId = {
+  0: '431040',
+  1: '777',
+  2: '731040',
+};
 
 const TheForm = () => {
   const signFormRef = useRef();
   const buyFormRef = useRef();
   const { account, networkId, activeNetwork } = useWallet();
 
-  useEffect(() => {
-    setAddress(account);
-    setRuleId('431040');
-    setMessage('');
-    setClientSignature('');
-    setResponseData(undefined);
-    setResponseSignature('');
-  }, [account]);
-
-  useEffect(() => {
-    if (account && activeNetwork) {
-      const signer = ethereum.getSigner();
-      PureFI.setSigner(signer);
-    } else {
-      PureFI.unsetSigner();
-    }
-  }, [account, activeNetwork]);
-
   const [address, setAddress] = useState('');
-  const [ruleId, setRuleId] = useState('');
+  const [ruleType, setRuleType] = useState(defaultRuleType);
+  const [ruleId, setRuleId] = useState(ruleType2RuleId[defaultRuleType]);
   const [chainId, setChainId] = useState('56');
 
   const [message, setMessage] = useState('');
@@ -55,14 +62,46 @@ const TheForm = () => {
     clearTxnError,
   } = useBuyContract();
 
+  useEffect(() => {
+    setAddress(account);
+    setRuleType(defaultRuleType);
+    setMessage('');
+    setClientSignature('');
+    setResponseData(undefined);
+    setResponseSignature('');
+  }, [account]);
+
+  useEffect(() => {
+    setRuleId(ruleType2RuleId[ruleType]);
+    setMessage('');
+    setClientSignature('');
+  }, [ruleType]);
+
+  useEffect(() => {
+    if (account && activeNetwork) {
+      const signer = ethereum.getSigner();
+      PureFI.setSigner(signer);
+    } else {
+      PureFI.unsetSigner();
+    }
+  }, [account, activeNetwork]);
+
   const loading = signLoading || requestLoading || buyLoading;
 
   const dummyChangeHandler = () => {};
+
+  const ruleChangeHandler = (e) => {
+    if (!loading) {
+      setRuleType(+e.target.value);
+    }
+  };
 
   const chainChangeHandler = (e) => {
     setChainId(Number(e.target.value));
     setMessage('');
     setClientSignature('');
+    setResponseData(undefined);
+    setResponseSignature('');
   };
 
   const checkValidity = (theRef) => {
@@ -131,6 +170,7 @@ const TheForm = () => {
         value: Number(bnbValue),
         data: responseData,
         signature: responseSignature,
+        ruleType: ruleType,
       };
       await buy(payload);
     }
@@ -207,6 +247,17 @@ const TheForm = () => {
                 required
               />
             </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label htmlFor="ruleType">Rule Type</Form.Label>
+              <Toggle
+                name="ruleType"
+                value={ruleType}
+                options={ruleTypeOptions}
+                onChange={ruleChangeHandler}
+              />
+            </Form.Group>
+
             <Form.Group className="mb-3">
               <Form.Label htmlFor="ruleId">Rule Id</Form.Label>
               <Form.Control

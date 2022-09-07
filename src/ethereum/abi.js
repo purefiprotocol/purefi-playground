@@ -7,5 +7,7 @@ export const ERC20TokenABI = [
 ];
 
 export const BuyContractABI = [
-  'function buyFor(address _to, uint256[] memory data, bytes memory signature) external payable',
+  'function buyForWithAML(address _to, uint256[] memory data, bytes memory signature) external payable',
+  'function buyForWithKYC(address _to, uint256[] memory data, bytes memory signature) external payable',
+  'function buyForWithKYCAML(address _to, uint256[] memory data, bytes memory signature) external payable',
 ];

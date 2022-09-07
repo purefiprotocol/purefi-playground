@@ -66,10 +66,12 @@ const useBuyContract = () => {
 
   const buy = useMutation(
     async (variables) => {
-      const { target, value, data, signature } = variables;
+      const { target, value, data, signature, ruleType } = variables;
       setTxnHash('');
       setTxnError('');
-      return handleTransaction(ethereum.buy(target, value, data, signature));
+      return handleTransaction(
+        ethereum.buy(target, value, data, signature, ruleType)
+      );
     },
     {
       onSuccess: handleSuccess,
