@@ -1,451 +1,694 @@
 import { useState, useRef, useEffect } from 'react';
-import Form from 'react-bootstrap/Form';
-import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Button from 'react-bootstrap/Button';
-import { PureFI } from '@purefi/verifier-sdk';
-import { useBuyContract, useWallet } from '../../hooks';
-import ethereum from '../../ethereum';
+import { PureFI, PureFIErrorCodes } from '@purefi/verifier-sdk';
+import { parseFixed } from '@ethersproject/bignumber';
+import { toast } from 'react-toastify';
+import classNames from 'classnames';
+import { errorCodes, serializeError } from 'eth-rpc-errors';
+import { useWallet, useContract, useUrls } from '../../hooks';
+import { capitalizeFirstLetter } from '../../utils';
 import { Toggle } from '../Toggle';
-import { NETWORKS } from '../../config';
+import {
+  SIGN_TYPE_OPTIONS,
+  DEFAULT_SIGN_TYPE,
+  CONTRACTS_DICTIONARY,
+  DEFAULT_CUSTOM_SIGNER_URL,
+  CONFIGURED_RULE_TYPES,
+  DEFAULT_RULE_TYPE_VALUES,
+  RULE_TYPE_OPTIONS,
+  DEFAULT_RULE_TYPE,
+  ZERO_ADDRESS,
+} from '../../config';
+import openSrc from '../../assets/icons/open.svg';
 
-const ruleTypeOptions = [
-  {
-    label: 'AML',
-    value: 0,
-  },
-  {
-    label: 'KYC',
-    value: 1,
-  },
-  {
-    label: 'AML + KYC',
-    value: 2,
-  },
-];
+const getFunctionNameByRuleType = (ruleType) => {
+  if (ruleType === CONFIGURED_RULE_TYPES.KYC) {
+    return 'buyForWithKYC';
+  }
 
-const defaultRuleType = ruleTypeOptions[0].value;
+  if (ruleType === CONFIGURED_RULE_TYPES.KYC_AGE) {
+    return 'buyForWithAGEKYC';
+  }
 
-const ruleType2RuleId = {
-  0: '431040',
-  1: '777',
-  2: '731040',
+  if (ruleType === CONFIGURED_RULE_TYPES.KYC_COUNTRY) {
+    return 'buyForWithCOUNTRYKYC';
+  }
+
+  if (ruleType === CONFIGURED_RULE_TYPES.KYC_COUNTRY_AGE) {
+    return 'buyForWithCOUNTRYAGEKYC';
+  }
+
+  if (ruleType === CONFIGURED_RULE_TYPES.AML) {
+    return 'buyForWithAML';
+  }
+
+  if (ruleType === CONFIGURED_RULE_TYPES.AML_KYC) {
+    return 'buyForWithKYCAML';
+  }
+
+  if (ruleType === CONFIGURED_RULE_TYPES.AML_OPTIONAL_KYC) {
+    return 'buyForWithOptionalKYCAML';
+  }
+
+  return '';
 };
 
 const TheForm = () => {
   const signFormRef = useRef();
-  const buyFormRef = useRef();
-  const { account, networkId, activeNetwork } = useWallet();
+  const contractFormRef = useRef();
+  const toastRef = useRef();
+  const { account, chain, signer } = useWallet();
+  const urls = useUrls();
 
-  const [address, setAddress] = useState('');
-  const [ruleType, setRuleType] = useState(defaultRuleType);
-  const [ruleId, setRuleId] = useState(ruleType2RuleId[defaultRuleType]);
-  const [chainId, setChainId] = useState('56');
+  const contractData = CONTRACTS_DICTIONARY[chain.id];
 
-  const [message, setMessage] = useState('');
-  const [clientSignature, setClientSignature] = useState('');
-  const [bnbValue, setBnbValue] = useState('0.00001');
+  const [signType, setSignType] = useState(DEFAULT_SIGN_TYPE);
+  const [useCustomSigner, setUseCustomSigner] = useState(false);
+  const [customSignerUrl, setCustomSignerUrl] = useState(
+    DEFAULT_CUSTOM_SIGNER_URL
+  );
+
+  const [sender, setSender] = useState(account);
+  const [receiver, setReceiver] = useState(
+    contractData?.address || ZERO_ADDRESS
+  );
+  const [chainId, setChainId] = useState(chain.id);
+  const [ruleType, setRuleType] = useState(DEFAULT_RULE_TYPE);
+
+  const [ruleId, setRuleId] = useState(
+    DEFAULT_RULE_TYPE_VALUES[DEFAULT_RULE_TYPE]
+  );
+
+  const [tokenAddress, setTokenAddress] = useState(
+    contractData?.tokenAddress || ZERO_ADDRESS
+  );
+  const [amount, setAmount] = useState('0.01');
+  const [dataPack, setDataPack] = useState({});
+  const [purefiData, setPurefiData] = useState('');
+  const [signature, setSignature] = useState('');
 
   const [signLoading, setSignLoading] = useState(false);
-  const [requestLoading, setRequestLoading] = useState(false);
+  const [verifyLoading, setVerifyLoading] = useState(false);
 
-  const [responseData, setResponseData] = useState();
-  const [responseSignature, setResponseSignature] = useState('');
+  const { contractLoading, write } = useContract(
+    contractData,
+    getFunctionNameByRuleType(ruleType)
+  );
 
-  const [error, setError] = useState('');
-
-  const {
-    loading: buyLoading,
-    buy,
-    txnHash,
-    txnError,
-    clearTxnError,
-  } = useBuyContract();
+  const loading = signLoading || verifyLoading || contractLoading;
 
   useEffect(() => {
-    setChainId(networkId);
-  }, [networkId]);
+    if (useCustomSigner) {
+      setCustomSignerUrl(DEFAULT_CUSTOM_SIGNER_URL);
+    }
+  }, [useCustomSigner]);
 
   useEffect(() => {
-    setAddress(account);
-    setRuleType(defaultRuleType);
-    setMessage('');
-    setClientSignature('');
-    setResponseData(undefined);
-    setResponseSignature('');
+    if (!chain.unsupported) {
+      setChainId(chain.id);
+    }
+  }, [chain]);
+
+  useEffect(() => {
+    setSender(account);
   }, [account]);
 
   useEffect(() => {
-    setRuleId(ruleType2RuleId[ruleType]);
-    setMessage('');
-    setClientSignature('');
-    setResponseData(undefined);
-    setResponseSignature('');
+    setReceiver(contractData?.address || ZERO_ADDRESS);
+    setTokenAddress(contractData?.tokenAddress || ZERO_ADDRESS);
+  }, [contractData]);
+
+  useEffect(() => {
+    setRuleId(DEFAULT_RULE_TYPE_VALUES[ruleType]);
   }, [ruleType]);
 
   useEffect(() => {
-    if (account && activeNetwork) {
-      const signer = ethereum.getSigner();
-      PureFI.setSigner(signer);
-    } else {
-      PureFI.unsetSigner();
+    const pack = {
+      sender,
+      receiver,
+      chainId: +chainId,
+      ruleId,
+    };
+
+    if (ruleType === CONFIGURED_RULE_TYPES.AML_OPTIONAL_KYC) {
+      pack.token = tokenAddress;
+      pack.amount = parseFixed(amount.toString(), 18).toHexString();
     }
-  }, [account, activeNetwork]);
+    setDataPack(pack);
+  }, [ruleType, ruleId, chainId, receiver, sender, tokenAddress, amount]);
 
-  const loading = signLoading || requestLoading || buyLoading;
+  useEffect(() => {
+    setSignature('');
+  }, [dataPack]);
 
-  const dummyChangeHandler = () => {};
+  useEffect(() => {
+    setPurefiData('');
+  }, [signature]);
 
-  const ruleChangeHandler = (e) => {
-    if (!loading) {
-      setRuleType(+e.target.value);
-    }
-  };
-
-  const chainChangeHandler = (e) => {
-    setChainId(Number(e.target.value));
-    setMessage('');
-    setClientSignature('');
-    setResponseData(undefined);
-    setResponseSignature('');
-  };
-
-  const checkValidity = (theRef) => {
-    const isValid = theRef.current.checkValidity();
+  const checkSignFormValidity = () => {
+    const isValid = signFormRef.current.checkValidity();
     if (!isValid) {
-      theRef.current.reportValidity();
+      signFormRef.current.reportValidity();
     }
     return isValid;
   };
 
   const signMessageHandler = async (e) => {
-    const isValid = checkValidity(signFormRef);
+    const isValid = checkSignFormValidity();
 
     if (isValid) {
-      try {
-        setSignLoading(true);
+      const message = JSON.stringify(dataPack);
 
-        const data = {
-          address,
-          ruleId: ruleId,
-          chainId: Number(chainId),
-        };
+      if (useCustomSigner) {
+        // custom signer flow
+        try {
+          setSignLoading(true);
+          toastRef.current = toast.loading('Pending...');
 
-        const message = JSON.stringify(data);
-        const signer = PureFI.getSigner();
+          const payload = {
+            message,
+          };
 
-        const signature = await signer.signMessage(message);
+          const response = await fetch(customSignerUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
 
-        setMessage(message);
-        setClientSignature(signature);
-        setResponseData(undefined);
-        setResponseSignature('');
-      } catch (error) {
-        setError(error.message);
-      } finally {
-        setSignLoading(false);
+          if (response.ok) {
+            const { signature } = await response.json();
+            setSignature(signature);
+            toast.success('Success!');
+          } else {
+            const { error } = await response.json();
+            const errorMessage = `Incorrect custom signer usage.\n${capitalizeFirstLetter(
+              error
+            )}`;
+            toast.error(errorMessage);
+          }
+        } catch (error) {
+          const errorMessage = `${error?.message}.\nHighly likely custom signer is offline`;
+          toast.error(errorMessage);
+        } finally {
+          setSignLoading(false);
+          toast.dismiss(toastRef.current);
+        }
+      } else {
+        // injected signer flow
+        try {
+          setSignLoading(true);
+          toastRef.current = toast.loading('Pending...');
+          const signature = await signer.signMessage(message);
+          setSignature(signature);
+          toast.success('Success!');
+        } catch (error) {
+          const { code, data, message } = serializeError(error);
+          let errorMessage = '';
+
+          if (
+            code === errorCodes.provider.userRejectedRequest ||
+            ((code === errorCodes.rpc.invalidInput ||
+              code === errorCodes.rpc.internal) &&
+              (message.includes('reject') || message.includes('cancel')))
+          ) {
+            errorMessage = 'User denied message signature';
+          } else {
+            errorMessage = data?.originalError?.reason || message;
+          }
+
+          toast.error(capitalizeFirstLetter(errorMessage));
+        } finally {
+          setSignLoading(false);
+          toast.dismiss(toastRef.current);
+        }
       }
     }
   };
 
-  const submitRequestHandler = async (e) => {
+  const verifyHandler = async (e) => {
     try {
-      setRequestLoading(true);
-      setResponseData();
-      setResponseSignature('');
+      setVerifyLoading(true);
+      toastRef.current = toast.loading('Pending...');
 
       const payload = {
-        message,
-        signature: clientSignature,
+        message: JSON.stringify(dataPack),
+        signature,
       };
 
-      const response = await PureFI.verifyRule(payload);
-
-      setError('');
-      setResponseData(response.data);
-      setResponseSignature(response.signature);
+      PureFI.setIssuerUrl(urls.issuer);
+      const data = await PureFI.verifyRule(payload, signType);
+      setPurefiData(data);
+      toast.success('Success!');
     } catch (error) {
-      setResponseData();
-      setResponseSignature('');
-      setError(error.message);
+      if (error.code === PureFIErrorCodes.FORBIDDEN) {
+        const url = `${urls.dashboard}/kyc`;
+        toast.warn(
+          <div>
+            <div className="mr-2">{error.message}</div>
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                color: '#25A2E9',
+              }}
+            >
+              <span style={{ marginRight: 5 }}>Dashboard</span>
+              <img height="12px" src={openSrc} alt="open" />
+            </a>
+          </div>,
+          {
+            autoClose: false,
+          }
+        );
+      } else {
+        toast.error(error.message);
+      }
     } finally {
-      setRequestLoading(false);
+      setVerifyLoading(false);
+      toast.dismiss(toastRef.current);
     }
   };
 
-  const buyRequestHandler = async (e) => {
-    const isValid = checkValidity(buyFormRef);
+  const customSignerUrlClassName = classNames({
+    'form-control': true,
+    invisible: !useCustomSigner,
+  });
+
+  const tokenAddressFormGroupClassName = classNames({
+    'form-group': true,
+    'd-none': ruleType !== CONFIGURED_RULE_TYPES.AML_OPTIONAL_KYC,
+  });
+
+  const checkContractFormValidity = () => {
+    return true;
+  };
+
+  const contractMethodHandler = (e) => {
+    const isValid = checkContractFormValidity();
+
     if (isValid) {
-      const payload = {
-        target: address,
-        value: Number(bnbValue),
-        data: responseData,
-        signature: responseSignature,
-        ruleType: ruleType,
-      };
-      await buy(payload);
+      // args depend on contract method interface
+      // https://docs.ethers.org/v5/api/contract/contract/#contract-functionsSend
+      const args = [sender, purefiData];
+      const overrides = { value: parseFixed(amount.toString(), 18).toString() };
+
+      write(args, overrides);
     }
   };
-
-  if (!account) {
-    return (
-      <Container fluid className="mb-4">
-        <div className="alert alert-primary mb-2" role="alert">
-          Connect wallet to proceed
-        </div>
-      </Container>
-    );
-  }
-
-  if (networkId !== activeNetwork.networkId) {
-    return (
-      <Container fluid className="mb-4">
-        <div className="alert alert-primary mb-2" role="alert">
-          Switch network to BNB Smart Chain (BEP-20) or Ethereum
-        </div>
-      </Container>
-    );
-  }
 
   return (
-    <Container fluid className="mb-4">
-      {error && (
-        <div className="alert alert-danger mb-3" role="alert">
-          {error}
-          <button
-            type="button"
-            className="close"
-            data-dismiss="alert"
-            aria-label="Close"
-            onClick={() => setError('')}
-          >
-            <span aria-hidden="true">&times;</span>
-          </button>
+    <div className="row justify-content-md-center">
+      <div className="col col-xs-12 col-md-8 mb-4">
+        <div className="card">
+          <div className="card-header">
+            <h4 className="mb-0">Demo Settings</h4>
+          </div>
+          <div className="card-body">
+            <form>
+              <div className="form-group">
+                <div className="row">
+                  <div className="col-3">
+                    <label className="form-label" htmlFor="signType">
+                      Issuer Signature Type
+                    </label>
+                  </div>
+                  <div className="col-9">
+                    <Toggle
+                      name="signType"
+                      value={signType}
+                      options={SIGN_TYPE_OPTIONS}
+                      onChange={(e) => !loading && setSignType(e.target.value)}
+                      readOnly={loading}
+                      flex
+                    />
+                  </div>
+                </div>
+              </div>
+              <hr />
+              <div className="form-group mb-0">
+                <div className="row align-items-center">
+                  <div className="col-3">
+                    <div className="form-check">
+                      <input
+                        type="checkbox"
+                        className="form-check-input"
+                        id="useCustomSigner"
+                        value={useCustomSigner}
+                        checked={useCustomSigner}
+                        onChange={(e) =>
+                          !loading && setUseCustomSigner(e.target.checked)
+                        }
+                        readOnly={loading}
+                      />
+                      <label
+                        className="form-check-label"
+                        htmlFor="useCustomSigner"
+                      >
+                        Use Custom Signer
+                      </label>
+                    </div>
+                  </div>
+                  <div className="col-9">
+                    <input
+                      type="text"
+                      className={customSignerUrlClassName}
+                      id="customSignerUrl"
+                      name="customSignerUrl"
+                      value={customSignerUrl}
+                      onChange={(e) => setCustomSignerUrl(e.target.value)}
+                      placeholder="custom signer url"
+                      required={useCustomSigner}
+                      readOnly={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
         </div>
-      )}
+      </div>
 
-      {txnError && (
-        <div className="alert alert-danger mb-3" role="alert">
-          {txnError}
-          <button
-            type="button"
-            className="close"
-            data-dismiss="alert"
-            aria-label="Close"
-            onClick={() => clearTxnError()}
-          >
-            <span aria-hidden="true">&times;</span>
-          </button>
+      <div className="col col-xs-12 col-md-8 mb-4">
+        <div className="card">
+          <div className="card-header">
+            <h4 className="mb-0">Input Data</h4>
+          </div>
+          <div className="card-body">
+            <form ref={signFormRef}>
+              <div className="form-group">
+                <div className="row align-items-start">
+                  <div className="col-3">
+                    <label className="form-label" htmlFor="sender">
+                      Sender
+                    </label>
+                  </div>
+                  <div className="col-9">
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="sender"
+                      name="sender"
+                      value={sender}
+                      onChange={() => {}}
+                      minLength="42"
+                      maxLength="42"
+                      placeholder="0x address"
+                      readOnly
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <div className="row align-items-start">
+                  <div className="col-3">
+                    <label className="form-label mb-0" htmlFor="receiver">
+                      Receiver
+                    </label>
+                  </div>
+                  <div className="col-9">
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="receiver"
+                      name="receiver"
+                      value={receiver}
+                      onChange={(e) => setReceiver(e.target.value)}
+                      minLength="42"
+                      maxLength="42"
+                      placeholder="0x receiver address"
+                      required
+                      readOnly={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <div className="row align-items-center">
+                  <div className="col-3">
+                    <label className="form-label" htmlFor="chainId">
+                      Chain Id
+                    </label>
+                  </div>
+                  <div className="col-9">
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="chainId"
+                      name="chainId"
+                      value={chainId}
+                      onChange={() => {}}
+                      placeholder="chain id"
+                      readOnly
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <div className="row">
+                  <div className="col-3">
+                    <label className="form-label" htmlFor="ruleType">
+                      Rule Type
+                    </label>
+                  </div>
+                  <div className="col-9">
+                    <Toggle
+                      name="ruleType"
+                      value={ruleType}
+                      options={RULE_TYPE_OPTIONS}
+                      onChange={(e) => !loading && setRuleType(+e.target.value)}
+                      readOnly={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <div className="row align-items-center">
+                  <div className="col-3">
+                    <label className="form-label" htmlFor="ruleId">
+                      Rule Id
+                    </label>
+                  </div>
+                  <div className="col-9">
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="ruleId"
+                      name="ruleId"
+                      value={ruleId}
+                      onChange={() => {}}
+                      placeholder="rule id"
+                      readOnly
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className={tokenAddressFormGroupClassName}>
+                <div className="row align-items-center">
+                  <div className="col-3">
+                    <label className="form-label" htmlFor="tokenAddress">
+                      Token Address
+                    </label>
+                  </div>
+                  <div className="col-9">
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="tokenAddress"
+                      name="tokenAddress"
+                      value={tokenAddress}
+                      onChange={(e) => setTokenAddress(e.target.value)}
+                      minLength="42"
+                      maxLength="42"
+                      placeholder="contract token address"
+                      required={
+                        ruleType === CONFIGURED_RULE_TYPES.AML_OPTIONAL_KYC
+                      }
+                      readOnly={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <div className="row">
+                  <div className="col-3">
+                    <label className="form-label" htmlFor="amount">
+                      Amount
+                    </label>
+                  </div>
+                  <div className="col-9">
+                    <input
+                      type="number"
+                      className="form-control"
+                      id="amount"
+                      value={amount}
+                      onChange={(e) => setAmount(+e.target.value)}
+                      min="0.001"
+                      step="0.001"
+                      placeholder="0.001"
+                      required
+                      readOnly={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <div className="row">
+                  <div className="col-3">
+                    <label className="form-label" htmlFor="dataPack">
+                      DataPack / Message
+                    </label>
+                  </div>
+                  <div className="col-9">
+                    <textarea
+                      className="form-control"
+                      id="dataPack"
+                      name="dataPack"
+                      value={JSON.stringify(dataPack, undefined, 2)}
+                      onChange={() => {}}
+                      rows={Math.max(6, Object.keys(dataPack).length + 2)}
+                      readOnly
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <div className="row">
+                  <div className="col-3">
+                    <label className="form-label" htmlFor="signature">
+                      Signature
+                    </label>
+                  </div>
+                  <div className="col-9">
+                    <textarea
+                      className="form-control"
+                      id="signature"
+                      name="signature"
+                      value={signature}
+                      onChange={() => {}}
+                      rows={3}
+                      required
+                      readOnly
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-group mb-0">
+                <div className="row justify-content-center mb-2">
+                  <div className="col-3">
+                    <button
+                      className="btn btn-dark btn-block"
+                      type="button"
+                      onClick={signMessageHandler}
+                      disabled={loading}
+                    >
+                      1. Sign
+                    </button>
+                  </div>
+                </div>
+                <div className="row justify-content-center">
+                  <div className="col-3">
+                    <button
+                      className="btn btn-dark btn-block"
+                      type="button"
+                      onClick={verifyHandler}
+                      disabled={loading || !signature}
+                    >
+                      2. Verify
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
         </div>
-      )}
+      </div>
 
-      <Row>
-        <Col xs={4}>
-          <h4 className="mb-4">Input Data</h4>
-          <Form ref={signFormRef}>
-            <Form.Group className="mb-3">
-              <Form.Label htmlFor="address">Target Address</Form.Label>
-              <Form.Control
-                type="text"
-                id="address"
-                name="address"
-                value={address}
-                onChange={dummyChangeHandler}
-                minLength="42"
-                maxLength="42"
-                placeholder="0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB"
-                readOnly
-                required
-              />
-            </Form.Group>
+      <div className="col col-xs-12 col-md-8 mb-4">
+        <div className="card">
+          <div className="card-header">
+            <h4 className="mb-0">Issuer Response</h4>
+          </div>
+          <div className="card-body">
+            <form ref={contractFormRef}>
+              <div className="form-group">
+                <div className="row">
+                  <div className="col-3">
+                    <label className="form-label">Amount</label>
+                  </div>
+                  <div className="col-9">
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={amount}
+                      onChange={() => {}}
+                      readOnly
+                    />
+                  </div>
+                </div>
+              </div>
 
-            <Form.Group className="mb-3">
-              <Form.Label htmlFor="ruleType">Rule Type</Form.Label>
-              <Toggle
-                name="ruleType"
-                value={ruleType}
-                options={ruleTypeOptions}
-                onChange={ruleChangeHandler}
-              />
-            </Form.Group>
+              <div className="form-group">
+                <div className="row">
+                  <div className="col-3">
+                    <label className="form-label" htmlFor="purefiData">
+                      PureFI Data
+                    </label>
+                    <div>
+                      <span className="badge badge-pill badge-dark py-2 px-3">
+                        {signType}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="col-9">
+                    <textarea
+                      className="form-control"
+                      id="purefiData"
+                      value={purefiData}
+                      onChange={() => {}}
+                      rows={6}
+                      required
+                      readOnly
+                    />
+                  </div>
+                </div>
+              </div>
 
-            <Form.Group className="mb-3">
-              <Form.Label htmlFor="ruleId">Rule Id</Form.Label>
-              <Form.Control
-                type="number"
-                id="ruleId"
-                name="ruleId"
-                value={ruleId}
-                onChange={dummyChangeHandler}
-                step="1"
-                min="431001"
-                max="731100"
-                placeholder="431040"
-                readOnly
-                required
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label htmlFor="ruleId">Chain Id</Form.Label>
-              <Form.Control
-                as="select"
-                name="chainId"
-                aria-label="Default select example"
-                value={chainId || ''}
-                onChange={chainChangeHandler}
-                readOnly
-                disabled
-                required
-              >
-                <option value="1">Ethereum</option>
-                <option value="56">BNB Smart Chain</option>
-              </Form.Control>
-            </Form.Group>
-            <Form.Group>
-              <Button
-                variant="secondary"
-                type="button"
-                onClick={signMessageHandler}
-                disabled={loading}
-                block
-              >
-                Sign Message
-              </Button>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label htmlFor="message">Generated message</Form.Label>
-              <Form.Control
-                id="message"
-                as="textarea"
-                rows={7}
-                value={
-                  message
-                    ? JSON.stringify(JSON.parse(message), undefined, 2)
-                    : ''
-                }
-                onChange={() => {}}
-                required
-                readOnly
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label htmlFor="clientSignature">Signature</Form.Label>
-              <Form.Control
-                id="clientSignature"
-                as="textarea"
-                rows={4}
-                value={clientSignature}
-                onChange={() => {}}
-                required
-                readOnly
-              />
-            </Form.Group>
-            <Button
-              variant="secondary"
-              type="button"
-              onClick={submitRequestHandler}
-              disabled={loading || !message || !clientSignature}
-              block
-            >
-              Submit request
-            </Button>
-          </Form>
-        </Col>
-
-        <Col xs={4}>
-          <h4 className="mb-4">Issuer Response</h4>
-          <Form ref={buyFormRef}>
-            <Form.Group className="mb-3">
-              <Form.Label htmlFor="bnbValue">
-                Buy for {NETWORKS[networkId].symbol}
-              </Form.Label>
-              <Form.Control
-                id="bnbValue"
-                type="number"
-                value={bnbValue}
-                onChange={(e) => setBnbValue(e.target.value)}
-                min="0.00001"
-                step="0.00001"
-                placeholder="0.01"
-                required
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label htmlFor="responseData">Data</Form.Label>
-              <Form.Control
-                id="responseData"
-                as="textarea"
-                rows={8}
-                value={
-                  responseData ? JSON.stringify(responseData, undefined, 2) : ''
-                }
-                onChange={() => {}}
-                required
-                readOnly
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label htmlFor="responseSignature">Signature</Form.Label>
-              <Form.Control
-                id="responseSignature"
-                as="textarea"
-                rows={4}
-                value={responseSignature}
-                onChange={() => {}}
-                required
-                readOnly
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Button
-                variant="secondary"
-                type="button"
-                onClick={buyRequestHandler}
-                disabled={loading || !responseData || !responseSignature}
-                block
-              >
-                Buy
-              </Button>
-            </Form.Group>
-          </Form>
-        </Col>
-
-        <Col xs={4}>
-          <h4 className="mb-4">Buy Contract Response</h4>
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label htmlFor="txnHash">Transaction hash</Form.Label>
-              <Form.Control
-                id="txnHash"
-                type="text"
-                value={txnHash}
-                onChange={() => {}}
-                readOnly
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label htmlFor="txnHash">Transaction link</Form.Label>
-              {txnHash && (
-                <a
-                  className="text-truncate ml-2"
-                  href={`${NETWORKS[networkId].explorerUrl}/tx/${txnHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {NETWORKS[networkId].explorerName}
-                </a>
-              )}
-            </Form.Group>
-          </Form>
-
-          <Form></Form>
-        </Col>
-      </Row>
-    </Container>
+              <div className="form-group mb-0">
+                <div className="row justify-content-center">
+                  <div className="col-3">
+                    <button
+                      className="btn btn-dark btn-block"
+                      type="button"
+                      onClick={contractMethodHandler}
+                      disabled={loading || !purefiData}
+                    >
+                      3. Write
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

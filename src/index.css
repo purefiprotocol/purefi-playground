@@ -1,18 +1,30 @@
 @import 'bootstrap/dist/css/bootstrap-reboot.css';
 @import 'bootstrap/dist/css/bootstrap.css';
+@import 'react-toastify/dist/ReactToastify.css';
 
 :root {
-  --havbar-height: 56px;
+  --black-color: #080808;
+  --navbar-height: 56px;
+  --w3m-accent-color: gray !important;
+  --w3m-background-color: var(--black-color) !important;
+  --w3m-font-family: 'Roboto Mono', monospace, sans-serif !important;
 }
 
 html,
 body,
 #root {
   height: 100%;
-  font-family: 'Roboto', sans-serif;
+  overflow-y: hidden;
+  font-family: 'Roboto Mono', monospace, sans-serif;
 }
 
-.wrapper {
-  height: calc(100% - var(--havbar-height) - 20);
-  overflow-y: auto;
+.bg-dark,
+.btn-dark,
+.badge-dark {
+  background-color: var(--black-color) !important;
+}
+
+.custom-control-input:checked ~ .custom-control-label:before {
+  border-color: var(--black-color) !important;
+  background-color: var(--black-color) !important;
 }

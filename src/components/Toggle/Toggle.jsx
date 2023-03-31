@@ -1,5 +1,5 @@
 const Toggle = (props) => {
-  const { value, onChange, options, name } = props;
+  const { value, onChange, options, name, readOnly, flex = false } = props;
 
   return (
     <div>
@@ -7,7 +7,10 @@ const Toggle = (props) => {
         options.map((option, index) => {
           const inputId = `${name}_${index}}`;
           return (
-            <div key={index} className="form-check form-check-inline">
+            <div
+              key={index}
+              className={`form-check${flex ? ' form-check-inline' : ''}`}
+            >
               <label
                 className="form-check-label d-flex align-items-center"
                 htmlFor={inputId}
@@ -21,6 +24,7 @@ const Toggle = (props) => {
                   checked={value === option.value}
                   onChange={onChange}
                   style={{ height: '12px' }}
+                  readOnly={readOnly}
                 />
                 <span>{option.label}</span>
               </label>

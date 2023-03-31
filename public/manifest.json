@@ -1,6 +1,6 @@
 {
-  "short_name": "SDK Demo",
-  "name": "PureFi subscription sdk demo app",
+  "short_name": "SDK subscription demo",
+  "name": "PureFI SDK subscription demo app",
   "icons": [
     {
       "src": "favicon.ico",
