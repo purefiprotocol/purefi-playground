@@ -1,3 +1,5 @@
+/* eslint-disable jsx-a11y/anchor-is-valid */
+
 import { useState, useRef, useEffect } from 'react';
 import { PureFI, PureFIErrorCodes } from '@purefi/verifier-sdk';
 import { parseFixed } from '@ethersproject/bignumber';
@@ -143,6 +145,15 @@ const TheForm = () => {
   useEffect(() => {
     setPurefiData('');
   }, [signature]);
+
+  const receiverAddressSetter = (e) => {
+    e.preventDefault();
+    if (!loading) {
+      setReceiver(
+        receiver !== contractData.address ? contractData.address : ZERO_ADDRESS
+      );
+    }
+  };
 
   const checkSignFormValidity = () => {
     const isValid = signFormRef.current.checkValidity();
@@ -411,6 +422,13 @@ const TheForm = () => {
                     <label className="form-label mb-0" htmlFor="receiver">
                       Receiver
                     </label>
+                    <small className="form-text text-muted">
+                      <a href="#" onClick={receiverAddressSetter}>
+                        {receiver !== contractData.address
+                          ? 'restore contract'
+                          : 'set address(0)'}
+                      </a>
+                    </small>
                   </div>
                   <div className="col-9">
                     <input
