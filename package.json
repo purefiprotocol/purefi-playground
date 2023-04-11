@@ -16,7 +16,7 @@
     "react-router-dom": "^6.9.0",
     "react-scripts": "^5.0.1",
     "react-toastify": "^9.1.2",
-    "wagmi": "^0.12.6"
+    "wagmi": "^0.12.10"
   },
   "scripts": {
     "start": "react-scripts start",
