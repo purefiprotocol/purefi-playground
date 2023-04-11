@@ -150,7 +150,7 @@ const TheForm = () => {
     e.preventDefault();
     if (!loading) {
       setReceiver(
-        receiver !== contractData.address ? contractData.address : ZERO_ADDRESS
+        receiver !== contractData?.address ? contractData.address : ZERO_ADDRESS
       );
     }
   };
@@ -424,7 +424,7 @@ const TheForm = () => {
                     </label>
                     <small className="form-text text-muted">
                       <a href="#" onClick={receiverAddressSetter}>
-                        {receiver !== contractData.address
+                        {receiver !== contractData?.address
                           ? 'restore contract'
                           : 'set address(0)'}
                       </a>
