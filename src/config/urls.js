@@ -1,15 +1,19 @@
 import { polygonMumbai } from 'wagmi/chains';
 
+const STAGE_DASHBOARD_URL = process.env.REACT_APP_STAGE_DASHBOARD_URL;
+const STAGE_ISSUER_URL = process.env.REACT_APP_STAGE_ISSUER_URL;
+
 const CONFIGURED_URLS = {
   [polygonMumbai.id]: {
-    dashboard: 'https://stage.dashboard.purefi.io',
-    issuer: 'https://stage.issuer.app.purefi.io',
+    dashboard: STAGE_DASHBOARD_URL,
+    issuer: STAGE_ISSUER_URL,
+  },
   },
 };
 
 const DEFAULT_URLS = {
-  dashboard: 'https://stage.dashboard.purefi.io',
-  issuer: 'https://stage.issuer.app.purefi.io',
+  dashboard: STAGE_DASHBOARD_URL,
+  issuer: STAGE_ISSUER_URL,
 };
 
 export { CONFIGURED_URLS, DEFAULT_URLS };
