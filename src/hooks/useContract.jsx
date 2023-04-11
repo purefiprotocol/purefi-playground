@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { ethers } from 'ethers';
 import { errorCodes, serializeError } from 'eth-rpc-errors';
 import { toast } from 'react-toastify';
+import { zkSyncTestnet } from 'wagmi/chains';
 import useWallet from './useWallet.js';
 import {
   CONFIGURED_GAS_LIMIT_MULTIPLIERS,
@@ -35,18 +36,22 @@ const useContract = (contractData, functionName) => {
         setLoading(true);
         toastRef.current = toast.loading('Pending...');
         const theOverrides = overrides || {};
-        const estimatedGasLimit = await contract.estimateGas[functionName](
-          ...args,
-          theOverrides
-        );
-        const increasedGasLimit = estimatedGasLimit
-          .mul(gasLimitMultiplier * 100)
-          .div(100);
 
-        const gasPrice = await provider.getGasPrice();
+        if (chain.id !== zkSyncTestnet.id) {
+          const estimatedGasLimit = await contract.estimateGas[functionName](
+            ...args,
+            theOverrides
+          );
 
-        theOverrides.gasLimit = increasedGasLimit;
-        theOverrides.gasPrice = gasPrice;
+          const increasedGasLimit = estimatedGasLimit
+            .mul(gasLimitMultiplier * 100)
+            .div(100);
+
+          const gasPrice = await provider.getGasPrice();
+
+          theOverrides.gasLimit = increasedGasLimit;
+          theOverrides.gasPrice = gasPrice;
+        }
 
         const txn = await contract[functionName](...args, theOverrides);
         const response = await txn.wait();

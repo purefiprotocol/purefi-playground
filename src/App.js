@@ -6,12 +6,13 @@ import {
 } from '@web3modal/ethereum';
 import { Web3Modal } from '@web3modal/react';
 import { configureChains, createClient, WagmiConfig } from 'wagmi';
-import { polygonMumbai } from 'wagmi/chains';
+import { polygonMumbai, zkSyncTestnet } from 'wagmi/chains';
 import { WalletProvider } from './context';
 import { CONFIGURED_CHAINS } from './config';
 import { Layout } from './components';
 import { Home, NotFound } from './pages';
 import polygonLogo from './assets/icons/polygon.webp';
+import zkSyncLogo from './assets/icons/zksync.png';
 
 const wcProjectId = process.env.REACT_APP_WALLECT_CONNECT_PROJECT_ID;
 
@@ -47,6 +48,7 @@ const App = () => {
         ethereumClient={ethereumClient}
         chainImages={{
           [polygonMumbai.id]: polygonLogo,
+          [zkSyncTestnet.id]: zkSyncLogo,
         }}
         enableNetworkView
       />
