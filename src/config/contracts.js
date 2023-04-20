@@ -219,7 +219,7 @@ const CONTRACTS_DICTIONARY = {
     ],
   },
   [zkSyncTestnet.id]: {
-    address: '0x6fBff158DB39522FDE839b0f8Cb16DB59dce9Def',
+    address: '0xa564c64E4F1CaBadF02e29E259C7614f27c653dE',
     tokenAddress: '0xB477a7AB4d39b689fEa0fDEd737F97C76E4b0b93', // tUFI
     abi: [
       {
