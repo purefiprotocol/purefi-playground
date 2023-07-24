@@ -31,6 +31,8 @@ const useContract = (contractData, functionName) => {
       toast.error('Contract is not configured');
     } else if (!functionName) {
       toast.error("Contract's functionName is missing");
+    } else if (!contract[functionName]) {
+      toast.error('Contract is not configured properly');
     } else {
       try {
         setLoading(true);

@@ -2,7 +2,7 @@ import { polygonMumbai, zkSyncTestnet } from 'wagmi/chains';
 
 const CONTRACTS_DICTIONARY = {
   [polygonMumbai.id]: {
-    address: '0xD722f3d3F1814C48e3E36988745086F6c43bD469',
+    address: '0x6353c96305637D2FC9a8de8ef56881790D9cb730',
     tokenAddress: '0x70892902C0BfFdEEAac711ec48F14c00b0fa7E3A', // tUFI
     abi: [
       {
@@ -128,6 +128,42 @@ const CONTRACTS_DICTIONARY = {
           },
         ],
         name: 'buyForWithKYCAML',
+        outputs: [],
+        stateMutability: 'payable',
+        type: 'function',
+      },
+      {
+        inputs: [
+          {
+            internalType: 'address',
+            name: '_to',
+            type: 'address',
+          },
+          {
+            internalType: 'bytes',
+            name: '_purefidata',
+            type: 'bytes',
+          },
+        ],
+        name: 'buyForWithKYCPurefi1',
+        outputs: [],
+        stateMutability: 'payable',
+        type: 'function',
+      },
+      {
+        inputs: [
+          {
+            internalType: 'address',
+            name: '_to',
+            type: 'address',
+          },
+          {
+            internalType: 'bytes',
+            name: '_purefidata',
+            type: 'bytes',
+          },
+        ],
+        name: 'buyForWithKYCPurefi2',
         outputs: [],
         stateMutability: 'payable',
         type: 'function',

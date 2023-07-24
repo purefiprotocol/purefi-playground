@@ -23,32 +23,16 @@ import {
 import openSrc from '../../assets/icons/open.svg';
 
 const getFunctionNameByRuleType = (ruleType) => {
-  if (ruleType === CONFIGURED_RULE_TYPES.KYC) {
-    return 'buyForWithKYC';
+  if (ruleType === CONFIGURED_RULE_TYPES.PUREFI_KYC1) {
+    return 'buyForWithKYCPurefi1';
   }
 
-  if (ruleType === CONFIGURED_RULE_TYPES.KYC_AGE) {
-    return 'buyForWithAGEKYC';
-  }
-
-  if (ruleType === CONFIGURED_RULE_TYPES.KYC_COUNTRY) {
-    return 'buyForWithCOUNTRYKYC';
-  }
-
-  if (ruleType === CONFIGURED_RULE_TYPES.KYC_COUNTRY_AGE) {
-    return 'buyForWithCOUNTRYAGEKYC';
+  if (ruleType === CONFIGURED_RULE_TYPES.PUREFI_KYC2) {
+    return 'buyForWithKYCPurefi2';
   }
 
   if (ruleType === CONFIGURED_RULE_TYPES.AML) {
     return 'buyForWithAML';
-  }
-
-  if (ruleType === CONFIGURED_RULE_TYPES.AML_KYC) {
-    return 'buyForWithKYCAML';
-  }
-
-  if (ruleType === CONFIGURED_RULE_TYPES.AML_OPTIONAL_KYC) {
-    return 'buyForWithOptionalKYCAML';
   }
 
   return '';
@@ -308,7 +292,7 @@ const TheForm = () => {
       const args = [sender, purefiData];
       const overrides = { value: parseFixed(amount.toString(), 18).toString() };
 
-      write(args, overrides);
+      write && write(args, overrides);
     }
   };
 
