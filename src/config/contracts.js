@@ -255,7 +255,7 @@ const CONTRACTS_DICTIONARY = {
     ],
   },
   [zkSyncTestnet.id]: {
-    address: '0xa564c64E4F1CaBadF02e29E259C7614f27c653dE',
+    address: '0x4F54a9914683221c768F8A05C26B13219fDD5d54',
     tokenAddress: '0xB477a7AB4d39b689fEa0fDEd737F97C76E4b0b93', // tUFI
     abi: [
       {
@@ -381,6 +381,42 @@ const CONTRACTS_DICTIONARY = {
           },
         ],
         name: 'buyForWithKYCAML',
+        outputs: [],
+        stateMutability: 'payable',
+        type: 'function',
+      },
+      {
+        inputs: [
+          {
+            internalType: 'address',
+            name: '_to',
+            type: 'address',
+          },
+          {
+            internalType: 'bytes',
+            name: '_purefidata',
+            type: 'bytes',
+          },
+        ],
+        name: 'buyForWithKYCPurefi1',
+        outputs: [],
+        stateMutability: 'payable',
+        type: 'function',
+      },
+      {
+        inputs: [
+          {
+            internalType: 'address',
+            name: '_to',
+            type: 'address',
+          },
+          {
+            internalType: 'bytes',
+            name: '_purefidata',
+            type: 'bytes',
+          },
+        ],
+        name: 'buyForWithKYCPurefi2',
         outputs: [],
         stateMutability: 'payable',
         type: 'function',
