@@ -55,7 +55,8 @@ const useContract = (contractData, functionName) => {
           theOverrides.gasPrice = gasPrice;
         }
 
-        const txn = await contract[functionName](...args, theOverrides);
+        const txn = await contract[functionName](...args);
+
         const response = await txn.wait();
         const url = `${chain.blockExplorers.default.url}/tx/${response.transactionHash}`;
 

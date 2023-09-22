@@ -4,35 +4,23 @@ import { useState, useRef, useEffect } from 'react';
 import { PureFI, PureFIErrorCodes } from '@purefi/verifier-sdk';
 import { parseFixed } from '@ethersproject/bignumber';
 import { toast } from 'react-toastify';
-import classNames from 'classnames';
 import { errorCodes, serializeError } from 'eth-rpc-errors';
 import { useWallet, useContract, useUrls } from '../../hooks';
 import { capitalizeFirstLetter } from '../../utils';
-import { Toggle } from '../Toggle';
 import {
-  SIGN_TYPE_OPTIONS,
   DEFAULT_SIGN_TYPE,
   CONTRACTS_DICTIONARY,
   DEFAULT_CUSTOM_SIGNER_URL,
   CONFIGURED_RULE_TYPES,
   DEFAULT_RULE_TYPE_VALUES,
-  RULE_TYPE_OPTIONS,
   DEFAULT_RULE_TYPE,
   ZERO_ADDRESS,
 } from '../../config';
 import openSrc from '../../assets/icons/open.svg';
 
 const getFunctionNameByRuleType = (ruleType) => {
-  if (ruleType === CONFIGURED_RULE_TYPES.PUREFI_KYC1) {
-    return 'buyForWithKYCPurefi1';
-  }
-
   if (ruleType === CONFIGURED_RULE_TYPES.PUREFI_KYC2) {
-    return 'buyForWithKYCPurefi2';
-  }
-
-  if (ruleType === CONFIGURED_RULE_TYPES.AML) {
-    return 'buyForWithAML';
+    return 'whitelistForWithKYCPurefi2';
   }
 
   return '';
@@ -104,10 +92,6 @@ const TheForm = () => {
   }, [contractData]);
 
   useEffect(() => {
-    setRuleId(DEFAULT_RULE_TYPE_VALUES[ruleType]);
-  }, [ruleType]);
-
-  useEffect(() => {
     const pack = {
       sender,
       receiver,
@@ -129,15 +113,6 @@ const TheForm = () => {
   useEffect(() => {
     setPurefiData('');
   }, [signature]);
-
-  const receiverAddressSetter = (e) => {
-    e.preventDefault();
-    if (!loading) {
-      setReceiver(
-        receiver !== contractData?.address ? contractData.address : ZERO_ADDRESS
-      );
-    }
-  };
 
   const checkSignFormValidity = () => {
     const isValid = signFormRef.current.checkValidity();
@@ -269,16 +244,6 @@ const TheForm = () => {
     }
   };
 
-  const customSignerUrlClassName = classNames({
-    'form-control': true,
-    invisible: !useCustomSigner,
-  });
-
-  const tokenAddressFormGroupClassName = classNames({
-    'form-group': true,
-    'd-none': ruleType !== CONFIGURED_RULE_TYPES.AML_OPTIONAL_KYC,
-  });
-
   const checkContractFormValidity = () => {
     return true;
   };
@@ -290,9 +255,8 @@ const TheForm = () => {
       // args depend on contract method interface
       // https://docs.ethers.org/v5/api/contract/contract/#contract-functionsSend
       const args = [sender, purefiData];
-      const overrides = { value: parseFixed(amount.toString(), 18).toString() };
 
-      write && write(args, overrides);
+      write && write(args);
     }
   };
 
@@ -301,253 +265,10 @@ const TheForm = () => {
       <div className="col col-xs-12 col-md-8 mb-4">
         <div className="card">
           <div className="card-header">
-            <h4 className="mb-0">Demo Settings</h4>
-          </div>
-          <div className="card-body">
-            <form>
-              <div className="form-group">
-                <div className="row">
-                  <div className="col-3">
-                    <label className="form-label" htmlFor="signType">
-                      Issuer Signature Type
-                    </label>
-                  </div>
-                  <div className="col-9">
-                    <Toggle
-                      name="signType"
-                      value={signType}
-                      options={SIGN_TYPE_OPTIONS}
-                      onChange={(e) => !loading && setSignType(e.target.value)}
-                      readOnly={loading}
-                      flex
-                    />
-                  </div>
-                </div>
-              </div>
-              <hr />
-              <div className="form-group mb-0">
-                <div className="row align-items-center">
-                  <div className="col-3">
-                    <div className="form-check">
-                      <input
-                        type="checkbox"
-                        className="form-check-input"
-                        id="useCustomSigner"
-                        value={useCustomSigner}
-                        checked={useCustomSigner}
-                        onChange={(e) =>
-                          !loading && setUseCustomSigner(e.target.checked)
-                        }
-                        readOnly={loading}
-                      />
-                      <label
-                        className="form-check-label"
-                        htmlFor="useCustomSigner"
-                      >
-                        Use Custom Signer
-                      </label>
-                    </div>
-                  </div>
-                  <div className="col-9">
-                    <input
-                      type="text"
-                      className={customSignerUrlClassName}
-                      id="customSignerUrl"
-                      name="customSignerUrl"
-                      value={customSignerUrl}
-                      onChange={(e) => setCustomSignerUrl(e.target.value)}
-                      placeholder="custom signer url"
-                      required={useCustomSigner}
-                      readOnly={loading}
-                    />
-                  </div>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-
-      <div className="col col-xs-12 col-md-8 mb-4">
-        <div className="card">
-          <div className="card-header">
             <h4 className="mb-0">Input Data</h4>
           </div>
           <div className="card-body">
             <form ref={signFormRef}>
-              <div className="form-group">
-                <div className="row align-items-start">
-                  <div className="col-3">
-                    <label className="form-label" htmlFor="sender">
-                      Sender
-                    </label>
-                  </div>
-                  <div className="col-9">
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="sender"
-                      name="sender"
-                      value={sender}
-                      onChange={() => {}}
-                      minLength="42"
-                      maxLength="42"
-                      placeholder="0x address"
-                      readOnly
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <div className="row align-items-start">
-                  <div className="col-3">
-                    <label className="form-label mb-0" htmlFor="receiver">
-                      Receiver
-                    </label>
-                    <small className="form-text text-muted">
-                      <a href="#" onClick={receiverAddressSetter}>
-                        {receiver !== contractData?.address
-                          ? 'restore contract'
-                          : 'set address(0)'}
-                      </a>
-                    </small>
-                  </div>
-                  <div className="col-9">
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="receiver"
-                      name="receiver"
-                      value={receiver}
-                      onChange={(e) => setReceiver(e.target.value)}
-                      minLength="42"
-                      maxLength="42"
-                      placeholder="0x receiver address"
-                      required
-                      readOnly={loading}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <div className="row align-items-center">
-                  <div className="col-3">
-                    <label className="form-label" htmlFor="chainId">
-                      Chain Id
-                    </label>
-                  </div>
-                  <div className="col-9">
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="chainId"
-                      name="chainId"
-                      value={chainId}
-                      onChange={() => {}}
-                      placeholder="chain id"
-                      readOnly
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <div className="row">
-                  <div className="col-3">
-                    <label className="form-label" htmlFor="ruleType">
-                      Rule Type
-                    </label>
-                  </div>
-                  <div className="col-9">
-                    <Toggle
-                      name="ruleType"
-                      value={ruleType}
-                      options={RULE_TYPE_OPTIONS}
-                      onChange={(e) => !loading && setRuleType(+e.target.value)}
-                      readOnly={loading}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <div className="row align-items-center">
-                  <div className="col-3">
-                    <label className="form-label" htmlFor="ruleId">
-                      Rule Id
-                    </label>
-                  </div>
-                  <div className="col-9">
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="ruleId"
-                      name="ruleId"
-                      value={ruleId}
-                      onChange={() => {}}
-                      placeholder="rule id"
-                      readOnly
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className={tokenAddressFormGroupClassName}>
-                <div className="row align-items-center">
-                  <div className="col-3">
-                    <label className="form-label" htmlFor="tokenAddress">
-                      Token Address
-                    </label>
-                  </div>
-                  <div className="col-9">
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="tokenAddress"
-                      name="tokenAddress"
-                      value={tokenAddress}
-                      onChange={(e) => setTokenAddress(e.target.value)}
-                      minLength="42"
-                      maxLength="42"
-                      placeholder="contract token address"
-                      required={
-                        ruleType === CONFIGURED_RULE_TYPES.AML_OPTIONAL_KYC
-                      }
-                      readOnly={loading}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <div className="row">
-                  <div className="col-3">
-                    <label className="form-label" htmlFor="amount">
-                      Amount
-                    </label>
-                  </div>
-                  <div className="col-9">
-                    <input
-                      type="number"
-                      className="form-control"
-                      id="amount"
-                      value={amount}
-                      onChange={(e) => setAmount(+e.target.value)}
-                      min="0.001"
-                      step="0.001"
-                      placeholder="0.001"
-                      required
-                      readOnly={loading}
-                    />
-                  </div>
-                </div>
-              </div>
-
               <div className="form-group">
                 <div className="row">
                   <div className="col-3">
@@ -629,23 +350,6 @@ const TheForm = () => {
           </div>
           <div className="card-body">
             <form ref={contractFormRef}>
-              <div className="form-group">
-                <div className="row">
-                  <div className="col-3">
-                    <label className="form-label">Amount</label>
-                  </div>
-                  <div className="col-9">
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={amount}
-                      onChange={() => {}}
-                      readOnly
-                    />
-                  </div>
-                </div>
-              </div>
-
               <div className="form-group">
                 <div className="row">
                   <div className="col-3">
