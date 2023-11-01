@@ -5,8 +5,7 @@
   "dependencies": {
     "@ethersproject/bignumber": "^5.7.0",
     "@purefi/verifier-sdk": "^6.0.1",
-    "@web3modal/ethereum": "^2.2.2",
-    "@web3modal/react": "^2.2.2",
+    "@rainbow-me/rainbowkit": "^1.1.4",
     "bootstrap": "^4.6.2",
     "classnames": "^2.3.2",
     "eth-rpc-errors": "^4.0.3",
@@ -16,12 +15,16 @@
     "react-router-dom": "^6.9.0",
     "react-scripts": "^5.0.1",
     "react-toastify": "^9.1.2",
-    "wagmi": "^0.12.10"
+    "viem": "^1.18.1",
+    "wagmi": "^1.4.5"
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "CI=false && react-scripts build",
+    "build": "react-scripts build",
     "eject": "react-scripts eject"
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11"
   },
   "eslintConfig": {
     "extends": [
@@ -30,14 +33,17 @@
   },
   "browserslist": {
     "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
+      "chrome >= 67",
+      "edge >= 79",
+      "firefox >= 68",
+      "opera >= 54",
+      "safari >= 14"
     ],
     "development": [
       "last 1 chrome version",
       "last 1 firefox version",
-      "last 1 safari version"
+      "last 1 safari version",
+      "last 1 edge version"
     ]
   }
 }

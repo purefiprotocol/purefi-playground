@@ -1,57 +1,51 @@
 import { Routes, Route, BrowserRouter } from 'react-router-dom';
 import {
-  EthereumClient,
-  w3mConnectors,
-  w3mProvider,
-} from '@web3modal/ethereum';
-import { Web3Modal } from '@web3modal/react';
-import { configureChains, createClient, WagmiConfig } from 'wagmi';
-import { polygonMumbai, zkSyncTestnet } from 'wagmi/chains';
+  getDefaultWallets,
+  RainbowKitProvider,
+  darkTheme,
+} from '@rainbow-me/rainbowkit';
+import { configureChains, createConfig, WagmiConfig } from 'wagmi';
+import { publicProvider } from 'wagmi/providers/public';
 import { WalletProvider } from './context';
 import { CONFIGURED_CHAINS } from './config';
 import { Layout } from './components';
 import { Home, NotFound } from './pages';
-import polygonLogo from './assets/icons/polygon.webp';
-import zkSyncLogo from './assets/icons/zksync.png';
 
 const wcProjectId = process.env.REACT_APP_WALLECT_CONNECT_PROJECT_ID;
 
-const { chains, provider } = configureChains(CONFIGURED_CHAINS, [
-  w3mProvider({ projectId: wcProjectId }),
+const { chains, publicClient } = configureChains(CONFIGURED_CHAINS, [
+  publicProvider(),
 ]);
 
-const wagmiClient = createClient({
-  autoConnect: true,
-  connectors: w3mConnectors({ projectId: wcProjectId, version: 1, chains }),
-  provider,
+const { connectors } = getDefaultWallets({
+  appName: 'SDK demo',
+  projectId: wcProjectId,
+  chains,
 });
-const ethereumClient = new EthereumClient(wagmiClient, chains);
+
+const wagmiConfig = createConfig({
+  autoConnect: true,
+  connectors,
+  publicClient,
+});
 
 const App = () => {
   return (
     <>
-      <WagmiConfig client={wagmiClient}>
-        <WalletProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Layout />}>
-                <Route index element={<Home />} />
-                <Route path="*" element={<NotFound />} />
-              </Route>
-            </Routes>
-          </BrowserRouter>
-        </WalletProvider>
+      <WagmiConfig config={wagmiConfig}>
+        <RainbowKitProvider chains={chains} theme={darkTheme()}>
+          <WalletProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Layout />}>
+                  <Route index element={<Home />} />
+                  <Route path="*" element={<NotFound />} />
+                </Route>
+              </Routes>
+            </BrowserRouter>
+          </WalletProvider>
+        </RainbowKitProvider>
       </WagmiConfig>
-
-      <Web3Modal
-        projectId={wcProjectId}
-        ethereumClient={ethereumClient}
-        chainImages={{
-          [polygonMumbai.id]: polygonLogo,
-          [zkSyncTestnet.id]: zkSyncLogo,
-        }}
-        enableNetworkView
-      />
     </>
   );
 };

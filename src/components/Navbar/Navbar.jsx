@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Web3Button, Web3NetworkSwitch } from '@web3modal/react';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useUrls } from '../../hooks';
 import openSrc from '../../assets/icons/open.svg';
 
@@ -27,11 +27,12 @@ function Navbar() {
                 <img height="10px" src={openSrc} alt="open" />
               </Link>
             </div>
-            <div className="mr-2">
-              <Web3NetworkSwitch />
-            </div>
             <div>
-              <Web3Button label="Connect" />
+              <ConnectButton
+                accountStatus="address"
+                chainStatus={{ smallScreen: 'icon', largeScreen: 'full' }}
+                showBalance={false}
+              />
             </div>
           </form>
         </div>

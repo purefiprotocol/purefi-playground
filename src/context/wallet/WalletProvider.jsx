@@ -1,13 +1,13 @@
-import { useAccount, useNetwork, useProvider, useSigner } from 'wagmi';
+import { useAccount, useNetwork } from 'wagmi';
 import WalletContext from './WalletContext';
+import { useEthersSigner, useEthersProvider } from '../../hooks';
 
 const WalletProvider = (props) => {
   const { children } = props;
   const { chain } = useNetwork();
   const { address: account, isConnected, isConnecting } = useAccount();
-  const { data: signer } = useSigner();
-
-  const provider = useProvider();
+  const signer = useEthersSigner();
+  const provider = useEthersProvider();
 
   return (
     <WalletContext.Provider
