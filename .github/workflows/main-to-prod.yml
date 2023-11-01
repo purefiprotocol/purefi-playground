@@ -7,11 +7,20 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+      CI: false
     steps:
       - name: Check out main branch
         uses: actions/checkout@v2
         with:
           ref: main
+
+      - name: Use specific node version
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.17.1
+
+      - name: Print current toolchain
+        run: node -v && yarn -v
 
       - name: Install dependencies with yarn
         run: yarn
