@@ -1,4 +1,4 @@
-export { CONFIGURED_CHAINS, DEAFULT_CHAIN } from './chains';
+export * from './chains';
 export { SIGN_TYPE_OPTIONS, DEFAULT_SIGN_TYPE } from './signType';
 export {
   CONFIGURED_RULE_TYPES,
