@@ -17,14 +17,14 @@ const RULE_TYPE_OPTIONS = [
     label: 'PUREFI KYC (LVL 1)',
     value: CONFIGURED_RULE_TYPES.PUREFI_KYC1,
   },
-  {
-    label: 'PUREFI KYC (LVL 2)',
-    value: CONFIGURED_RULE_TYPES.PUREFI_KYC2,
-  },
-  {
-    label: 'AML',
-    value: CONFIGURED_RULE_TYPES.AML,
-  },
+  // {
+  //   label: 'PUREFI KYC (LVL 2)',
+  //   value: CONFIGURED_RULE_TYPES.PUREFI_KYC2,
+  // },
+  // {
+  //   label: 'AML',
+  //   value: CONFIGURED_RULE_TYPES.AML,
+  // },
 ];
 
 const DEFAULT_RULE_TYPE = CONFIGURED_RULE_TYPES.PUREFI_KYC1;

@@ -1,4 +1,4 @@
-import { polygonMumbai, zkSyncTestnet } from 'wagmi/chains';
+import { sepolia } from 'wagmi/chains';
 
 const artheraTestnet = {
   id: 10243,
@@ -25,11 +25,7 @@ const artheraTestnet = {
   },
 };
 
-const CONFIGURED_CHAINS = [
-  polygonMumbai,
-  artheraTestnet,
-  // zkSyncTestnet
-];
-const DEAFULT_CHAIN = polygonMumbai;
+const CONFIGURED_CHAINS = [sepolia, artheraTestnet];
+const DEAFULT_CHAIN = sepolia;
 
-export { CONFIGURED_CHAINS, DEAFULT_CHAIN, artheraTestnet };
+export { CONFIGURED_CHAINS, DEAFULT_CHAIN, artheraTestnet, sepolia };
