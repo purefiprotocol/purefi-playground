@@ -25,7 +25,38 @@ const artheraTestnet = {
   },
 };
 
-const CONFIGURED_CHAINS = [sepolia, artheraTestnet];
+const polygonAmoy = {
+  id: 80002,
+  name: 'Polygon Amoy',
+  network: 'amoy',
+  nativeCurrency: {
+    name: 'POL',
+    symbol: 'POL',
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://rpc-amoy.polygon.technology'],
+    },
+    public: {
+      http: ['https://rpc-amoy.polygon.technology'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'Polygonscan',
+      url: 'https://amoy.polygonscan.com',
+    },
+  },
+};
+
+const CONFIGURED_CHAINS = [sepolia, polygonAmoy, artheraTestnet];
 const DEAFULT_CHAIN = sepolia;
 
-export { CONFIGURED_CHAINS, DEAFULT_CHAIN, artheraTestnet, sepolia };
+export {
+  CONFIGURED_CHAINS,
+  DEAFULT_CHAIN,
+  sepolia,
+  polygonAmoy,
+  artheraTestnet,
+};
