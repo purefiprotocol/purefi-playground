@@ -1,4 +1,0 @@
-.main {
-  height: calc(100% - var(--navbar-height));
-  overflow-y: auto;
-}
