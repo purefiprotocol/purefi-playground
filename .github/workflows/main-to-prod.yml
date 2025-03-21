@@ -17,7 +17,7 @@ jobs:
       - name: Use specific node version
         uses: actions/setup-node@v3
         with:
-          node-version: 18.17.1
+          node-version: 20.13.1
 
       - name: Print current toolchain
         run: node -v && yarn -v
