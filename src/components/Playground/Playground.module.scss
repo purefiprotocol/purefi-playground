@@ -1,3 +1,26 @@
+@import '@/styles/variables';
+
 .playground {
   display: block;
+
+  // :global(.ant-card-head) {
+  //   background: black;
+  //   color: white;
+  // }
+}
+
+.some {
+  min-width: 60%;
+}
+
+.playground__payload {
+  padding: 10px;
+  background-color: $gray4;
+  border: 1px solid $gray5;
+  border-radius: 8px;
+
+  pre {
+    margin: 0;
+    overflow: auto;
+  }
 }
