@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { FC, useEffect, useRef, useState } from 'react';
 import {
   PureFI,
