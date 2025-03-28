@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ChangeEvent, FC, useEffect, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import {
-  PackageType,
   PureFI,
   PureFIError,
   PureFIErrorCodes,
@@ -23,6 +22,7 @@ import {
   Modal,
   Radio,
   RadioChangeEvent,
+  Result,
   Row,
   Select,
   Space,
@@ -30,7 +30,6 @@ import {
   Typography,
 } from 'antd';
 
-import styles from './Playground.module.scss';
 import {
   BaseError,
   createWalletClient,
@@ -38,11 +37,19 @@ import {
   parseUnits,
   zeroAddress,
 } from 'viem';
+
 import { useAccount } from 'wagmi';
-import { checkIfChainSupported } from '@/utils';
+
+import { checkIfChainSupported, sleep } from '@/utils';
 import { useMediaQuery } from 'react-responsive';
-import { DEFAULT_CHAIN_VIEM } from '@/config';
-import { InfoCircleOutlined, LoadingOutlined } from '@ant-design/icons';
+import {
+  ExportOutlined,
+  InfoCircleOutlined,
+  LoadingOutlined,
+} from '@ant-design/icons';
+
+import styles from './Playground.module.scss';
+import { ConnectButton } from '../ConnectButton';
 
 enum PresetTypeEnum {
   CUSTOM = 0,
@@ -86,9 +93,10 @@ interface VerificationProcessFormFields {
 }
 
 const ISSUER_API_URL_STAGE = import.meta.env.VITE_ISSUER_API_URL_STAGE;
+const DASHBOARD_URL_STAGE = import.meta.env.VITE_DASHBOARD_URL_STAGE;
 const ISSUER_API_URL_PROD = import.meta.env.VITE_ISSUER_API_URL_PROD;
-
-const PUREFI_DEMO_CONTRACT = '0xd9f7c12906af9fd2264967fc7d4faa8a08d09dfa';
+const DASHBOARD_URL_PROD = import.meta.env.VITE_DASHBOARD_URL_PROD;
+const PUREFI_DEMO_CONTRACT = import.meta.env.VITE_PUREFI_DEMO_CONTRACT;
 
 const PACKAGE_TYPE_OPTIONS = [
   {
@@ -170,17 +178,25 @@ const Playground: FC = () => {
         value: account.address || '',
       },
     ]);
+    payloadForm.setFields([
+      {
+        name: 'fromAddress',
+        value: account.address || '',
+      },
+    ]);
     setPurefiPayload(null);
+    setPurefiPackage(null);
   }, [account.address]);
 
   useEffect(() => {
     signatureProcessForm.setFields([
       {
         name: 'chainId',
-        value: account.chainId || DEFAULT_CHAIN_VIEM.id,
+        value: account.chainId || '',
       },
     ]);
     setPurefiPayload(null);
+    setPurefiPackage(null);
   }, [account.chainId]);
 
   const [presetType, setPresetType] = useState<PresetTypeEnum>(
@@ -195,9 +211,12 @@ const Playground: FC = () => {
   const [isVerificationAllowed, setIsVerificationAllowed] = useState(false);
 
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
+  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
 
   const [purefiPayload, setPurefiPayload] =
     useState<PureFIRuleV5Payload | null>(null);
+
+  const [purefiPackage, setPurefiPackage] = useState<string | null>(null);
 
   const [signatureFrontendLoading, setSignatureFrontendLoading] =
     useState(false);
@@ -263,6 +282,7 @@ const Playground: FC = () => {
       validatePayloadHandler();
     }
     setPurefiPayload(null);
+    setPurefiPackage(null);
   }, [presetType]);
 
   const openSignatureModalHandler = () => {
@@ -271,6 +291,18 @@ const Playground: FC = () => {
 
   const closeSignatureModalHandler = () => {
     setIsSignatureModalOpen(false);
+  };
+
+  const openVerificationModalHandler = () => {
+    setIsVerificationModalOpen(true);
+  };
+
+  const closeVerificationModalHandler = () => {
+    if (!verificationLoading) {
+      setIsVerificationModalOpen(false);
+      setIsVerificationAllowed(false);
+      setPurefiError(null);
+    }
   };
 
   const [payloadForm] = Form.useForm();
@@ -328,6 +360,7 @@ const Playground: FC = () => {
 
   const payloadFormChangeHandler = (fields: PayloadFields) => {
     setPurefiPayload(null);
+    setPurefiPackage(null);
   };
 
   const [signatureProcessForm] = Form.useForm();
@@ -363,6 +396,7 @@ const Playground: FC = () => {
         },
       ]);
       setPurefiPayload(null);
+      setPurefiPackage(null);
     }
   };
 
@@ -449,28 +483,6 @@ const Playground: FC = () => {
 
         const domain = createDomain('PureFi', account.chainId!);
 
-        const ruleV5Payload: RuleV5Payload = {
-          ruleId: '431050',
-          from: account.address!,
-          to: '0xd9f7c12906af9fd2264967fc7d4faa8a08d09dfa',
-          tokenData0: {
-            address: zeroAddress,
-            value: parseUnits('0.001', 18).toString(),
-            decimals: '18',
-          },
-          packageType: '32',
-        };
-
-        const ruleV5Data: RuleV5Data = {
-          account: {
-            address: account.address!,
-          },
-          chain: {
-            id: account.chainId!.toString(),
-          },
-          payload: ruleV5Payload,
-        };
-
         const ruleV5Types = createRuleV5Types(ruleV5Payload);
 
         const signature = await walletClient.signTypedData({
@@ -503,46 +515,13 @@ const Playground: FC = () => {
       try {
         setSignatureBackendLoading(true);
 
-        const domain = createDomain('PureFi', account.chainId!);
-
-        const ruleV5Payload: RuleV5Payload = {
-          ruleId: '431050',
-          from: account.address!,
-          to: '0xd9f7c12906af9fd2264967fc7d4faa8a08d09dfa',
-          tokenData0: {
-            address: zeroAddress,
-            value: parseUnits('0.001', 18).toString(),
-            decimals: '18',
-          },
-          packageType: '32',
-        };
-
-        const ruleV5Data: RuleV5Data = {
-          account: {
-            address: account.address!,
-          },
-          chain: {
-            id: account.chainId!.toString(),
-          },
-          payload: ruleV5Payload,
-        };
-
-        const ruleV5Types = createRuleV5Types(ruleV5Payload);
-
-        const payload = {
-          domain,
-          types: ruleV5Types,
-          primaryType: 'Data',
-          message: ruleV5Data,
-        };
-
         const response = await fetch(customSignerUrlValue, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Accept: 'application/json',
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(ruleV5Data),
         });
 
         if (response.ok) {
@@ -562,25 +541,34 @@ const Playground: FC = () => {
     }
   };
 
-  const verifyUserHandler = async () => {
-    try {
-      setVerificationLoading(true);
+  const verificationHandler = async () => {
+    if (purefiPayload) {
+      try {
+        setVerificationLoading(true);
 
-      PureFI.setIssuerUrl(issuerUrlValue);
+        openVerificationModalHandler();
 
-      const data = await PureFI.verifyRuleV5(purefiPayload!);
+        await sleep(500);
 
-      console.log(data);
-    } catch (error: unknown) {
-      const theError = error as PureFIError;
+        PureFI.setIssuerUrl(issuerUrlValue);
 
-      setPurefiError(theError.message);
+        const data = await PureFI.verifyRuleV5(
+          purefiPayload,
+          signatureTypeValue
+        );
 
-      if (theError.code === PureFIErrorCodes.FORBIDDEN) {
-        setIsVerificationAllowed(true);
+        setPurefiPackage(data);
+      } catch (error: unknown) {
+        const theError = error as PureFIError;
+
+        setPurefiError(theError.message);
+
+        if (theError.code === PureFIErrorCodes.FORBIDDEN) {
+          setIsVerificationAllowed(true);
+        }
+      } finally {
+        setVerificationLoading(false);
       }
-    } finally {
-      setVerificationLoading(false);
     }
   };
 
@@ -686,15 +674,15 @@ const Playground: FC = () => {
       address: accountAddressValue,
     },
     chain: {
-      id: chainIdValue,
+      id: chainIdValue?.toString() || '',
     },
     payload: ruleV5Payload,
   };
 
   const payloadConstructorTitle = (
-    <Row gutter={[8, 8]}>
+    <Row gutter={[16, 8]}>
       <Col className="gutter-row" xs={24} lg={12}>
-        <h3>Payload Constructor</h3>
+        <h3>1. Payload Constructor</h3>
       </Col>
       <Col className="gutter-row" xs={24} lg={12}>
         <Form.Item
@@ -719,716 +707,786 @@ const Playground: FC = () => {
     setPresetType(PresetTypeEnum.CUSTOM);
     payloadForm.resetFields();
     setPurefiPayload(null);
+    setPurefiPackage(null);
   };
 
   const validatePayloadHandler = async () => {
     await payloadForm.validateFields();
   };
 
+  const proceedToDashboard = () => {
+    const dashboardUrl =
+      issuerUrlValue === ISSUER_API_URL_STAGE
+        ? DASHBOARD_URL_STAGE
+        : DASHBOARD_URL_PROD;
+    const specificDashboardUrl = `${dashboardUrl}/kyc`;
+    window.open(specificDashboardUrl, '_blank');
+  };
+
   return (
     <div className={styles.playground}>
-      <Space direction="vertical" size="middle" style={{ display: 'flex' }}>
-        <Card title={payloadConstructorTitle} size="small">
-          <Row gutter={[24, 8]} align="stretch">
-            <Col className="gutter-row" xs={24} lg={12}>
-              <Form
-                layout="vertical"
-                initialValues={{
-                  packageType: '0',
-                  ruleId: '',
-                  toAddress: '',
-                  fromAddress: '',
-                  intermediaryAddress: '',
-                  payeeAddress: '',
-                  token0Address: '',
-                  token0Value: '',
-                  token0Decimals: 18,
-                  token1Address: '',
-                  token1Value: '',
-                  token1Decimals: 18,
-                  tokenPaymentAddress: '',
-                  tokenPaymentValue: '',
-                  tokenPaymentDecimals: 18,
-                }}
-                form={payloadForm}
-                onValuesChange={payloadFormChangeHandler}
-                autoComplete="off"
-              >
-                <Form.Item
-                  label="Package Type"
-                  name="packageType"
-                  rules={[{ required: true }]}
-                  hasFeedback
+      {!isReady && (
+        <Flex align="center" justify="center" style={{ margin: '68px 0' }}>
+          <ConnectButton />
+        </Flex>
+      )}
+
+      {isReady && (
+        <Space direction="vertical" size="middle" style={{ display: 'flex' }}>
+          <Card title={payloadConstructorTitle} size="small">
+            <Row gutter={[16, 8]} align="stretch">
+              <Col className="gutter-row" xs={24} lg={12}>
+                <Form
+                  layout="vertical"
+                  initialValues={{
+                    packageType: '0',
+                    ruleId: '',
+                    toAddress: '',
+                    fromAddress: account?.address || '',
+                    intermediaryAddress: '',
+                    payeeAddress: '',
+                    token0Address: '',
+                    token0Value: '',
+                    token0Decimals: 18,
+                    token1Address: '',
+                    token1Value: '',
+                    token1Decimals: 18,
+                    tokenPaymentAddress: '',
+                    tokenPaymentValue: '',
+                    tokenPaymentDecimals: 18,
+                  }}
+                  form={payloadForm}
+                  onValuesChange={payloadFormChangeHandler}
+                  autoComplete="off"
                 >
-                  <Select
-                    options={PACKAGE_TYPE_OPTIONS}
-                    disabled={isPayloadReadonly}
-                  />
-                </Form.Item>
+                  <Form.Item
+                    label="Package Type"
+                    name="packageType"
+                    rules={[{ required: true }]}
+                    hasFeedback
+                  >
+                    <Select
+                      options={PACKAGE_TYPE_OPTIONS}
+                      disabled={isPayloadReadonly}
+                    />
+                  </Form.Item>
 
-                <Form.Item
-                  label="Rule Id"
-                  name="ruleId"
-                  rules={[
-                    {
-                      required: true,
-                      validator: (rule, value) => {
-                        if (value === '') {
-                          return Promise.reject(
-                            new Error('Please enter Rule Id')
-                          );
-                        }
+                  <Form.Item
+                    label="Rule Id"
+                    name="ruleId"
+                    rules={[
+                      {
+                        required: true,
+                        validator: (rule, value) => {
+                          if (value === '') {
+                            return Promise.reject(
+                              new Error('Please enter Rule Id')
+                            );
+                          }
 
-                        if (+value <= 0) {
-                          return Promise.reject(
-                            new Error('Rule Id must be positive numeric string')
-                          );
-                        }
+                          if (+value <= 0) {
+                            return Promise.reject(
+                              new Error(
+                                'Rule Id must be positive numeric string'
+                              )
+                            );
+                          }
 
-                        return Promise.resolve();
+                          return Promise.resolve();
+                        },
                       },
-                    },
-                  ]}
-                  hasFeedback
-                >
-                  <Input
-                    type="number"
-                    placeholder="431050"
-                    readOnly={isPayloadReadonly}
-                    disabled={isPayloadReadonly}
-                  />
-                </Form.Item>
+                    ]}
+                    hasFeedback
+                  >
+                    <Input
+                      type="number"
+                      placeholder="431050"
+                      readOnly={isPayloadReadonly}
+                      disabled={isPayloadReadonly}
+                    />
+                  </Form.Item>
 
-                <Form.Item
-                  messageVariables={{ label: 'From (Address)' }}
-                  label={
-                    <Flex gap="4px" align="baseline">
-                      <div>From (Address)</div>
-                      {!!account?.address && (
-                        <Button
-                          type="link"
-                          onClick={() => {
-                            payloadForm.setFields([
-                              {
-                                name: 'fromAddress',
-                                value: account.address!,
-                              },
-                            ]);
-                            payloadForm.validateFields(['fromAddress']);
-                          }}
-                        >
-                          (Injected)
-                        </Button>
-                      )}
+                  <Form.Item
+                    messageVariables={{ label: 'From (Address)' }}
+                    label={
+                      <Flex gap="4px" align="baseline">
+                        <div>From (Address)</div>
+                        {!!account?.address && (
+                          <Button
+                            type="link"
+                            onClick={() => {
+                              payloadForm.setFields([
+                                {
+                                  name: 'fromAddress',
+                                  value: account.address!,
+                                },
+                              ]);
+                              payloadForm.validateFields(['fromAddress']);
+                            }}
+                          >
+                            (Injected)
+                          </Button>
+                        )}
+                      </Flex>
+                    }
+                    name="fromAddress"
+                    rules={[
+                      {
+                        required: true,
+                      },
+                      {
+                        pattern: /^(0x)[0-9a-fA-F]{40}$/,
+                        message: 'From (Address) Invalid',
+                      },
+                    ]}
+                    hasFeedback
+                  >
+                    <Input placeholder={zeroAddress} />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="To (Address)"
+                    name="toAddress"
+                    rules={[
+                      {
+                        required: true,
+                      },
+                      {
+                        pattern: /^(0x)[0-9a-fA-F]{40}$/,
+                        message: 'To (Address) Invalid',
+                      },
+                    ]}
+                    hasFeedback
+                  >
+                    <Input
+                      placeholder={zeroAddress}
+                      readOnly={isPayloadReadonly}
+                      disabled={isPayloadReadonly}
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Intermediary (Address)"
+                    name="intermediaryAddress"
+                    dependencies={['packageType']}
+                    hidden={isIntermediaryHidden}
+                    rules={[
+                      { required: !isIntermediaryHidden },
+                      {
+                        pattern: /^(0x)[0-9a-fA-F]{40}$/,
+                        message: 'Intermediary (Address) Invalid',
+                      },
+                    ]}
+                    hasFeedback
+                  >
+                    <Input
+                      placeholder={zeroAddress}
+                      readOnly={isPayloadReadonly}
+                      disabled={isPayloadReadonly}
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Payee (Address)"
+                    name="payeeAddress"
+                    hidden={isPayeeHidden}
+                    dependencies={['packageType']}
+                    rules={[
+                      { required: !isPayeeHidden },
+                      {
+                        pattern: /^(0x)[0-9a-fA-F]{40}$/,
+                        message: 'Payee (Address) Invalid',
+                      },
+                    ]}
+                    hasFeedback
+                  >
+                    <Input
+                      placeholder={zeroAddress}
+                      readOnly={isPayloadReadonly}
+                      disabled={isPayloadReadonly}
+                    />
+                  </Form.Item>
+
+                  <Row gutter={[16, 8]}>
+                    <Col className="gutter-row" xs={24} lg={14}>
+                      <Form.Item
+                        label="Token0 (Address)"
+                        name="token0Address"
+                        tooltip="Zero address means a native coin (ETH, POL, etc.)"
+                        hidden={isToken0Hidden}
+                        dependencies={['packageType']}
+                        rules={[
+                          { required: !isToken0Hidden },
+                          {
+                            pattern: /^(0x)[0-9a-fA-F]{40}$/,
+                            message: 'Token0 (Address) Invalid',
+                          },
+                        ]}
+                        hasFeedback
+                      >
+                        <Input
+                          placeholder={zeroAddress}
+                          readOnly={isPayloadReadonly}
+                          disabled={isPayloadReadonly}
+                        />
+                      </Form.Item>
+                    </Col>
+
+                    <Col className="gutter-row" xs={24} lg={5}>
+                      <Form.Item
+                        label="Value"
+                        name="token0Value"
+                        hidden={isToken0Hidden}
+                        dependencies={['packageType']}
+                        rules={[
+                          {
+                            required: !isToken0Hidden,
+                            validator: (rule, value) => {
+                              if (!rule?.required) {
+                                return Promise.resolve();
+                              }
+
+                              if (value === '') {
+                                return Promise.reject(
+                                  new Error('Please enter Value')
+                                );
+                              }
+
+                              if (+value <= 0) {
+                                return Promise.reject(
+                                  new Error(
+                                    'Value must be positive. Min value is 0.001'
+                                  )
+                                );
+                              }
+
+                              return Promise.resolve();
+                            },
+                          },
+                        ]}
+                        hasFeedback
+                      >
+                        <Input
+                          type="number"
+                          step={0.001}
+                          min={0.001}
+                          placeholder="0.001"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col className="gutter-row" xs={24} lg={5}>
+                      <Form.Item
+                        label="Decimals"
+                        name="token0Decimals"
+                        hidden={isToken0Hidden}
+                        dependencies={['packageType']}
+                        rules={[
+                          {
+                            required: !isToken0Hidden,
+                          },
+                        ]}
+                        hasFeedback
+                      >
+                        <Input
+                          placeholder="18"
+                          readOnly={isPayloadReadonly}
+                          disabled={isPayloadReadonly}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Row gutter={[16, 8]}>
+                    <Col className="gutter-row" xs={24} lg={14}>
+                      <Form.Item
+                        label="Token1 (Address)"
+                        name="token1Address"
+                        tooltip="Zero address means a native coin (ETH, POL, etc.)"
+                        hidden={isToken1Hidden}
+                        dependencies={['packageType']}
+                        rules={[
+                          { required: !isToken1Hidden },
+                          {
+                            pattern: /^(0x)[0-9a-fA-F]{40}$/,
+                            message: 'Token1 (Address) Invalid',
+                          },
+                        ]}
+                        hasFeedback
+                      >
+                        <Input
+                          placeholder={zeroAddress}
+                          readOnly={isPayloadReadonly}
+                          disabled={isPayloadReadonly}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col className="gutter-row" xs={24} lg={5}>
+                      <Form.Item
+                        label="Value"
+                        name="token1Value"
+                        hidden={isToken1Hidden}
+                        dependencies={['packageType']}
+                        rules={[
+                          {
+                            required: !isToken1Hidden,
+                            validator: (rule, value) => {
+                              if (!rule?.required) {
+                                return Promise.resolve();
+                              }
+
+                              if (value === '') {
+                                return Promise.reject(
+                                  new Error('Please enter Value')
+                                );
+                              }
+
+                              if (+value <= 0) {
+                                return Promise.reject(
+                                  new Error(
+                                    'Value must be positive. Min value is 0.001'
+                                  )
+                                );
+                              }
+
+                              return Promise.resolve();
+                            },
+                          },
+                        ]}
+                        hasFeedback
+                      >
+                        <Input
+                          type="number"
+                          step={0.001}
+                          min={0.001}
+                          placeholder="0.001"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col className="gutter-row" xs={24} lg={5}>
+                      <Form.Item
+                        label="Decimals"
+                        name="token1Decimals"
+                        hidden={isToken1Hidden}
+                        dependencies={['packageType']}
+                        rules={[
+                          {
+                            required: !isToken1Hidden,
+                          },
+                        ]}
+                        hasFeedback
+                      >
+                        <Input
+                          placeholder="18"
+                          readOnly={isPayloadReadonly}
+                          disabled={isPayloadReadonly}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Row gutter={[16, 8]}>
+                    <Col className="gutter-row" xs={24} lg={14}>
+                      <Form.Item
+                        label="Token Payment (Address)"
+                        name="tokenPaymentAddress"
+                        tooltip="Zero address means a native coin (ETH, POL, etc.)"
+                        hidden={isTokenPaymentHidden}
+                        dependencies={['packageType']}
+                        rules={[
+                          { required: !isTokenPaymentHidden },
+                          {
+                            pattern: /^(0x)[0-9a-fA-F]{40}$/,
+                            message: 'Token Payment (Address) Invalid',
+                          },
+                        ]}
+                        hasFeedback
+                      >
+                        <Input
+                          placeholder={zeroAddress}
+                          readOnly={isPayloadReadonly}
+                          disabled={isPayloadReadonly}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col className="gutter-row" xs={24} lg={5}>
+                      <Form.Item
+                        label="Value"
+                        name="tokenPaymentValue"
+                        hidden={isTokenPaymentHidden}
+                        dependencies={['packageType']}
+                        rules={[
+                          {
+                            required: !isTokenPaymentHidden,
+                            validator: (rule, value) => {
+                              if (!rule?.required) {
+                                return Promise.resolve();
+                              }
+
+                              if (value === '') {
+                                return Promise.reject(
+                                  new Error('Please enter Value')
+                                );
+                              }
+
+                              if (+value <= 0) {
+                                return Promise.reject(
+                                  new Error(
+                                    'Value must be positive. Min value is 0.001'
+                                  )
+                                );
+                              }
+
+                              return Promise.resolve();
+                            },
+                          },
+                        ]}
+                        hasFeedback
+                      >
+                        <Input
+                          type="number"
+                          step={0.001}
+                          min={0.001}
+                          placeholder="0.001"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col className="gutter-row" xs={24} lg={5}>
+                      <Form.Item
+                        label="Decimals"
+                        name="tokenPaymentDecimals"
+                        hidden={isTokenPaymentHidden}
+                        rules={[
+                          {
+                            required: !isTokenPaymentHidden,
+                          },
+                        ]}
+                        hasFeedback
+                      >
+                        <Input
+                          placeholder="18"
+                          readOnly={isPayloadReadonly}
+                          disabled={isPayloadReadonly}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Form.Item style={{ marginTop: 10 }}>
+                    <Flex vertical gap="8px">
+                      <Button
+                        onClick={validatePayloadHandler}
+                        color="primary"
+                        variant="outlined"
+                        block
+                      >
+                        Validate Payload
+                      </Button>
+                      <Button
+                        onClick={resetPayloadFormHandler}
+                        type="primary"
+                        variant="outlined"
+                        ghost
+                        danger
+                        block
+                      >
+                        Reset Fields
+                      </Button>
                     </Flex>
-                  }
-                  name="fromAddress"
-                  rules={[
-                    {
-                      required: true,
-                    },
-                    {
-                      pattern: /^(0x)[0-9a-fA-F]{40}$/,
-                      message: 'From (Address) Invalid',
-                    },
-                  ]}
-                  hasFeedback
-                >
-                  <Input placeholder={zeroAddress} />
-                </Form.Item>
-
-                <Form.Item
-                  label="To (Address)"
-                  name="toAddress"
-                  rules={[
-                    {
-                      required: true,
-                    },
-                    {
-                      pattern: /^(0x)[0-9a-fA-F]{40}$/,
-                      message: 'To (Address) Invalid',
-                    },
-                  ]}
-                  hasFeedback
-                >
-                  <Input
-                    placeholder={zeroAddress}
-                    readOnly={isPayloadReadonly}
-                    disabled={isPayloadReadonly}
-                  />
-                </Form.Item>
-
-                <Form.Item
-                  label="Intermediary (Address)"
-                  name="intermediaryAddress"
-                  dependencies={['packageType']}
-                  hidden={isIntermediaryHidden}
-                  rules={[
-                    { required: !isIntermediaryHidden },
-                    {
-                      pattern: /^(0x)[0-9a-fA-F]{40}$/,
-                      message: 'Intermediary (Address) Invalid',
-                    },
-                  ]}
-                  hasFeedback
-                >
-                  <Input
-                    placeholder={zeroAddress}
-                    readOnly={isPayloadReadonly}
-                    disabled={isPayloadReadonly}
-                  />
-                </Form.Item>
-
-                <Form.Item
-                  label="Payee (Address)"
-                  name="payeeAddress"
-                  hidden={isPayeeHidden}
-                  dependencies={['packageType']}
-                  rules={[
-                    { required: !isPayeeHidden },
-                    {
-                      pattern: /^(0x)[0-9a-fA-F]{40}$/,
-                      message: 'Payee (Address) Invalid',
-                    },
-                  ]}
-                  hasFeedback
-                >
-                  <Input
-                    placeholder={zeroAddress}
-                    readOnly={isPayloadReadonly}
-                    disabled={isPayloadReadonly}
-                  />
-                </Form.Item>
-
-                <Row gutter={[16, 8]}>
-                  <Col className="gutter-row" xs={24} lg={14}>
-                    <Form.Item
-                      label="Token0 (Address)"
-                      name="token0Address"
-                      tooltip="Zero address means a native coin (ETH, POL, etc.)"
-                      hidden={isToken0Hidden}
-                      dependencies={['packageType']}
-                      rules={[
-                        { required: !isToken0Hidden },
-                        {
-                          pattern: /^(0x)[0-9a-fA-F]{40}$/,
-                          message: 'Token0 (Address) Invalid',
-                        },
-                      ]}
-                      hasFeedback
-                    >
-                      <Input
-                        placeholder={zeroAddress}
-                        readOnly={isPayloadReadonly}
-                        disabled={isPayloadReadonly}
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col className="gutter-row" xs={24} lg={5}>
-                    <Form.Item
-                      label="Value"
-                      name="token0Value"
-                      hidden={isToken0Hidden}
-                      dependencies={['packageType']}
-                      rules={[
-                        {
-                          required: !isToken0Hidden,
-                          validator: (rule, value) => {
-                            if (!rule?.required) {
-                              return Promise.resolve();
-                            }
-
-                            if (value === '') {
-                              return Promise.reject(
-                                new Error('Please enter Value')
-                              );
-                            }
-
-                            if (+value <= 0) {
-                              return Promise.reject(
-                                new Error(
-                                  'Value must be positive. Min value is 0.001'
-                                )
-                              );
-                            }
-
-                            return Promise.resolve();
-                          },
-                        },
-                      ]}
-                      hasFeedback
-                    >
-                      <Input
-                        type="number"
-                        step={0.001}
-                        min={0.001}
-                        placeholder="0.001"
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col className="gutter-row" xs={24} lg={5}>
-                    <Form.Item
-                      label="Decimals"
-                      name="token0Decimals"
-                      hidden={isToken0Hidden}
-                      dependencies={['packageType']}
-                      rules={[
-                        {
-                          required: !isToken0Hidden,
-                        },
-                      ]}
-                      hasFeedback
-                    >
-                      <Input
-                        placeholder="18"
-                        readOnly={isPayloadReadonly}
-                        disabled={isPayloadReadonly}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[16, 8]}>
-                  <Col className="gutter-row" xs={24} lg={14}>
-                    <Form.Item
-                      label="Token1 (Address)"
-                      name="token1Address"
-                      tooltip="Zero address means a native coin (ETH, POL, etc.)"
-                      hidden={isToken1Hidden}
-                      dependencies={['packageType']}
-                      rules={[
-                        { required: !isToken1Hidden },
-                        {
-                          pattern: /^(0x)[0-9a-fA-F]{40}$/,
-                          message: 'Token1 (Address) Invalid',
-                        },
-                      ]}
-                      hasFeedback
-                    >
-                      <Input
-                        placeholder={zeroAddress}
-                        readOnly={isPayloadReadonly}
-                        disabled={isPayloadReadonly}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col className="gutter-row" xs={24} lg={5}>
-                    <Form.Item
-                      label="Value"
-                      name="token1Value"
-                      hidden={isToken1Hidden}
-                      dependencies={['packageType']}
-                      rules={[
-                        {
-                          required: !isToken1Hidden,
-                          validator: (rule, value) => {
-                            if (!rule?.required) {
-                              return Promise.resolve();
-                            }
-
-                            if (value === '') {
-                              return Promise.reject(
-                                new Error('Please enter Value')
-                              );
-                            }
-
-                            if (+value <= 0) {
-                              return Promise.reject(
-                                new Error(
-                                  'Value must be positive. Min value is 0.001'
-                                )
-                              );
-                            }
-
-                            return Promise.resolve();
-                          },
-                        },
-                      ]}
-                      hasFeedback
-                    >
-                      <Input
-                        type="number"
-                        step={0.001}
-                        min={0.001}
-                        placeholder="0.001"
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col className="gutter-row" xs={24} lg={5}>
-                    <Form.Item
-                      label="Decimals"
-                      name="token1Decimals"
-                      hidden={isToken1Hidden}
-                      dependencies={['packageType']}
-                      rules={[
-                        {
-                          required: !isToken1Hidden,
-                        },
-                      ]}
-                      hasFeedback
-                    >
-                      <Input
-                        placeholder="18"
-                        readOnly={isPayloadReadonly}
-                        disabled={isPayloadReadonly}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[16, 8]}>
-                  <Col className="gutter-row" xs={24} lg={14}>
-                    <Form.Item
-                      label="Token Payment (Address)"
-                      name="tokenPaymentAddress"
-                      tooltip="Zero address means a native coin (ETH, POL, etc.)"
-                      hidden={isTokenPaymentHidden}
-                      dependencies={['packageType']}
-                      rules={[
-                        { required: !isTokenPaymentHidden },
-                        {
-                          pattern: /^(0x)[0-9a-fA-F]{40}$/,
-                          message: 'Token Payment (Address) Invalid',
-                        },
-                      ]}
-                      hasFeedback
-                    >
-                      <Input
-                        placeholder={zeroAddress}
-                        readOnly={isPayloadReadonly}
-                        disabled={isPayloadReadonly}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col className="gutter-row" xs={24} lg={5}>
-                    <Form.Item
-                      label="Value"
-                      name="tokenPaymentValue"
-                      hidden={isTokenPaymentHidden}
-                      dependencies={['packageType']}
-                      rules={[
-                        {
-                          required: !isTokenPaymentHidden,
-                          validator: (rule, value) => {
-                            if (!rule?.required) {
-                              return Promise.resolve();
-                            }
-
-                            if (value === '') {
-                              return Promise.reject(
-                                new Error('Please enter Value')
-                              );
-                            }
-
-                            if (+value <= 0) {
-                              return Promise.reject(
-                                new Error(
-                                  'Value must be positive. Min value is 0.001'
-                                )
-                              );
-                            }
-
-                            return Promise.resolve();
-                          },
-                        },
-                      ]}
-                      hasFeedback
-                    >
-                      <Input
-                        type="number"
-                        step={0.001}
-                        min={0.001}
-                        placeholder="0.001"
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col className="gutter-row" xs={24} lg={5}>
-                    <Form.Item
-                      label="Decimals"
-                      name="tokenPaymentDecimals"
-                      hidden={isTokenPaymentHidden}
-                      rules={[
-                        {
-                          required: !isTokenPaymentHidden,
-                        },
-                      ]}
-                      hasFeedback
-                    >
-                      <Input
-                        placeholder="18"
-                        readOnly={isPayloadReadonly}
-                        disabled={isPayloadReadonly}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Form.Item style={{ marginTop: 10 }}>
-                  <Flex vertical gap="8px">
-                    <Button
-                      onClick={validatePayloadHandler}
-                      color="primary"
-                      variant="outlined"
-                      block
-                    >
-                      Validate Payload
-                    </Button>
-                    <Button
-                      onClick={resetPayloadFormHandler}
-                      type="primary"
-                      variant="outlined"
-                      ghost
-                      danger
-                      block
-                    >
-                      Reset Fields
-                    </Button>
-                  </Flex>
-                </Form.Item>
-              </Form>
-            </Col>
-            <Col
-              className="gutter-row"
-              xs={24}
-              lg={12}
-              style={{ height: '100%' }}
-            >
-              <div style={{ paddingBottom: 8 }}>Rule V5 Payload</div>
-              <div className={styles.playground__payload}>
-                <pre>{JSON.stringify(ruleV5Payload, null, 4)}</pre>
-              </div>
-            </Col>
-          </Row>
-        </Card>
-
-        <Card title={<h3>Signature Process</h3>} size="small">
-          <Row gutter={[24, 8]} align="stretch">
-            <Col className="gutter-row" xs={24} lg={12}>
-              <Form
-                layout="vertical"
-                initialValues={{
-                  implementation: ImplementationEnum.FRONTEND,
-                  customSignerUrl: 'http://localhost:5000/sign',
-                  accountAddress: account?.address || '',
-                  chainId: account?.chainId || DEFAULT_CHAIN_VIEM.id,
-                }}
-                form={signatureProcessForm}
-                onValuesChange={signatureProcessFormChangeHandler}
-                autoComplete="off"
+                  </Form.Item>
+                </Form>
+              </Col>
+              <Col
+                className="gutter-row"
+                xs={24}
+                lg={12}
+                style={{ height: '100%' }}
               >
-                <Form.Item
-                  label="Implementation"
-                  name="implementation"
-                  tooltip="What is responsible for signing generated payload above"
+                <div style={{ paddingBottom: 8 }}>Rule V5 Payload</div>
+                <div className={styles.playground__payload}>
+                  <pre>{JSON.stringify(ruleV5Payload, null, 4)}</pre>
+                </div>
+              </Col>
+            </Row>
+          </Card>
+
+          <Card title={<h3>2. Signature Process</h3>} size="small">
+            <Row gutter={[16, 8]} align="stretch">
+              <Col className="gutter-row" xs={24} lg={12}>
+                <Form
+                  layout="vertical"
+                  initialValues={{
+                    implementation: ImplementationEnum.FRONTEND,
+                    customSignerUrl: 'http://localhost:5000/sign',
+                    accountAddress: account?.address || '',
+                    chainId: account?.chainId || '',
+                  }}
+                  form={signatureProcessForm}
+                  onValuesChange={signatureProcessFormChangeHandler}
+                  autoComplete="off"
                 >
-                  <Radio.Group
-                    optionType="button"
-                    options={[
+                  <Form.Item
+                    label="Implementation"
+                    name="implementation"
+                    tooltip="What is responsible for signing generated payload above"
+                  >
+                    <Radio.Group
+                      optionType="button"
+                      options={[
+                        {
+                          value: ImplementationEnum.FRONTEND,
+                          label: isMobile
+                            ? "Partner's Frontend"
+                            : "Partner's Frontend (User Wallet)",
+                        },
+                        {
+                          value: ImplementationEnum.BACKEND,
+                          label: isMobile
+                            ? "Partner's Backend"
+                            : "Partner's Backend (Custom Signer)",
+                          disabled: true,
+                        },
+                      ]}
+                      block
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Injected Wallet (Address)"
+                    name="accountAddress"
+                    hidden={isAccountAddressHidden}
+                    required={!isAccountAddressHidden}
+                    rules={[
                       {
-                        value: ImplementationEnum.FRONTEND,
-                        label: isMobile
-                          ? "Partner's Frontend"
-                          : "Partner's Frontend (User Wallet)",
+                        required: !isAccountAddressHidden,
                       },
                       {
-                        value: ImplementationEnum.BACKEND,
-                        label: isMobile
-                          ? "Partner's Backend"
-                          : "Partner's Backend (Custom Signer)",
+                        pattern: /^(0x)[0-9a-fA-F]{40}$/,
+                        message: 'Injected Wallet (Address) Invalid',
                       },
                     ]}
-                    block
-                  />
-                </Form.Item>
+                    hasFeedback
+                  >
+                    <Input readOnly />
+                  </Form.Item>
 
-                <Form.Item
-                  label="Injected Wallet (Address)"
-                  name="accountAddress"
-                  hidden={isAccountAddressHidden}
-                  required={!isAccountAddressHidden}
-                  rules={[
-                    {
-                      required: !isAccountAddressHidden,
-                    },
-                    {
-                      pattern: /^(0x)[0-9a-fA-F]{40}$/,
-                      message: 'Injected Wallet (Address) Invalid',
-                    },
-                  ]}
-                  hasFeedback
-                >
-                  <Input readOnly />
-                </Form.Item>
+                  <Form.Item
+                    messageVariables={{ label: 'Chain Id' }}
+                    label="Chain Id"
+                    name="chainId"
+                    hidden={isChainIdHidden}
+                    required={!isChainIdHidden}
+                    rules={[
+                      {
+                        required: true,
+                        validator: (rule, value) => {
+                          if (value === '') {
+                            return Promise.reject(
+                              new Error('Please enter Chain Id')
+                            );
+                          }
 
-                <Form.Item
-                  messageVariables={{ label: 'Chain Id' }}
-                  label="Chain Id"
-                  name="chainId"
-                  hidden={isChainIdHidden}
-                  required={!isChainIdHidden}
-                  rules={[
-                    {
-                      required: true,
-                      validator: (rule, value) => {
-                        if (value === '') {
-                          return Promise.reject(
-                            new Error('Please enter Chain Id')
-                          );
-                        }
+                          if (+value <= 0) {
+                            return Promise.reject(
+                              new Error('Chain Id Invalid')
+                            );
+                          }
 
-                        if (+value <= 0) {
-                          return Promise.reject(new Error('Chain Id Invalid'));
-                        }
-
-                        return Promise.resolve();
+                          return Promise.resolve();
+                        },
                       },
-                    },
-                  ]}
-                  hasFeedback
-                >
-                  <Input type="number" readOnly />
-                </Form.Item>
+                    ]}
+                    hasFeedback
+                  >
+                    <Input type="number" readOnly />
+                  </Form.Item>
 
-                <Form.Item
-                  label="Partner's Custom Signer Backend URL"
-                  name="customSignerUrl"
-                  hidden={isCustomSignerUrlHidden}
-                  required={!isCustomSignerUrlHidden}
-                  rules={[
-                    {
-                      required: !isCustomSignerUrlHidden,
-                    },
-                  ]}
-                  hasFeedback
-                >
-                  <Input addonBefore="POST" />
-                </Form.Item>
+                  <Form.Item
+                    label="Partner's Custom Signer Backend URL"
+                    name="customSignerUrl"
+                    hidden={isCustomSignerUrlHidden}
+                    required={!isCustomSignerUrlHidden}
+                    rules={[
+                      {
+                        required: !isCustomSignerUrlHidden,
+                      },
+                    ]}
+                    hasFeedback
+                  >
+                    <Input addonBefore="POST" />
+                  </Form.Item>
 
-                <Form.Item style={{ marginTop: 30 }}>
-                  {implementationValue === ImplementationEnum.FRONTEND ? (
-                    <Button
-                      type="primary"
-                      onClick={signatureFrontendHandler}
-                      loading={signatureFrontendLoading}
-                      block
-                    >
-                      Sign
-                    </Button>
-                  ) : (
-                    <Button
-                      type="primary"
-                      onClick={signatureBackendHandler}
-                      loading={signatureBackendLoading}
-                      disabled
-                      block
-                    >
-                      Not availble
-                    </Button>
-                  )}
-                </Form.Item>
-              </Form>
-            </Col>
-            <Col
-              className="gutter-row"
-              xs={24}
-              lg={12}
-              style={{ height: '100%' }}
-            >
-              <Flex gap="10px" vertical>
-                <div>
-                  <div style={{ paddingBottom: 8 }}>
-                    <Tooltip title="EIP-712 compliant message">
-                      PureFi Message (Input) <InfoCircleOutlined />
-                    </Tooltip>
-                  </div>
-                  <div className={styles.playground__payload}>
-                    <pre>{JSON.stringify(ruleV5Data, null, 4)}</pre>
-                  </div>
-                </div>
-                <div>
-                  <div style={{ paddingBottom: 8 }}>
-                    <Tooltip
-                      title="This object is used as a payload to PureFi
-                    Issuer in Verification Process"
-                    >
-                      Signature Result (Output) <InfoCircleOutlined />
-                    </Tooltip>
-                  </div>
-                  <div className={styles.playground__payload}>
-                    <pre>
-                      {purefiPayload
-                        ? JSON.stringify(purefiPayload, null, 4)
-                        : ''}
-                    </pre>
-                  </div>
-                </div>
-              </Flex>
-            </Col>
-          </Row>
-        </Card>
-
-        <Card title={<h3>Verification Process</h3>} size="small">
-          <Row gutter={[8, 8]}>
-            <Col className="gutter-row" xs={24} lg={12}>
-              <Form
-                layout="vertical"
-                form={verificationProcessForm}
-                initialValues={{
-                  signatureType: SignatureType.ECDSA,
-                  issuerUrl: ISSUER_API_URL_STAGE,
-                }}
-                onValuesChange={verificationProcessFormChangeHandler}
-                autoComplete="off"
+                  <Form.Item style={{ marginTop: 30 }}>
+                    {implementationValue === ImplementationEnum.FRONTEND ? (
+                      <Button
+                        type="primary"
+                        onClick={signatureFrontendHandler}
+                        loading={signatureFrontendLoading}
+                        block
+                      >
+                        Sign
+                      </Button>
+                    ) : (
+                      <Button
+                        type="primary"
+                        onClick={signatureBackendHandler}
+                        loading={signatureBackendLoading}
+                        disabled
+                        block
+                      >
+                        Not availble
+                      </Button>
+                    )}
+                  </Form.Item>
+                </Form>
+              </Col>
+              <Col
+                className="gutter-row"
+                xs={24}
+                lg={12}
+                style={{ height: '100%' }}
               >
-                <Form.Item
-                  label="PureFi Issuer Signature Algorithm"
-                  name="signatureType"
-                >
-                  <Radio.Group
-                    optionType="button"
-                    options={[
-                      {
-                        value: SignatureType.ECDSA,
-                        label: SignatureType.ECDSA.toUpperCase(),
-                        title: SignatureType.ECDSA,
-                      },
-                      {
-                        value: SignatureType.BABYJUBJUB,
-                        label: SignatureType.BABYJUBJUB.toUpperCase(),
-                        title: SignatureType.BABYJUBJUB,
-                      },
-                    ]}
-                    block
-                  />
-                </Form.Item>
+                <Flex gap="10px" vertical>
+                  <div>
+                    <div style={{ paddingBottom: 8 }}>
+                      <Tooltip title="EIP-712 compliant message">
+                        PureFi Message (Input) <InfoCircleOutlined />
+                      </Tooltip>
+                    </div>
+                    <div className={styles.playground__payload}>
+                      <pre>{JSON.stringify(ruleV5Data, null, 4)}</pre>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ paddingBottom: 8 }}>
+                      <Tooltip title="">
+                        EIP-712 Signature (Output) <InfoCircleOutlined />
+                      </Tooltip>
+                    </div>
+                    <div className={styles.playground__payload}>
+                      <pre>{purefiPayload ? purefiPayload.signature : ''}</pre>
+                    </div>
+                  </div>
+                </Flex>
+              </Col>
+            </Row>
+          </Card>
 
-                <Form.Item label="PureFi Issuer URL" name="issuerUrl">
-                  <Radio.Group
-                    optionType="button"
-                    options={[
-                      {
-                        value: ISSUER_API_URL_STAGE,
-                        label: 'STAGE',
-                        title: `${ISSUER_API_URL_STAGE}/v5/rule`,
-                      },
-                      {
-                        value: ISSUER_API_URL_PROD,
-                        label: 'PROD',
-                        title: `${ISSUER_API_URL_PROD}/v5/rule`,
-                      },
-                    ]}
-                    block
-                  />
-                </Form.Item>
-              </Form>
-            </Col>
-          </Row>
-        </Card>
-      </Space>
+          <Card title={<h3>3. Verification Process</h3>} size="small">
+            <Row gutter={[16, 8]}>
+              <Col className="gutter-row" xs={24} lg={12}>
+                <Form
+                  layout="vertical"
+                  form={verificationProcessForm}
+                  initialValues={{
+                    signatureType: SignatureType.ECDSA,
+                    issuerUrl: ISSUER_API_URL_STAGE,
+                  }}
+                  onValuesChange={verificationProcessFormChangeHandler}
+                  autoComplete="off"
+                >
+                  <Form.Item
+                    label="PureFi Issuer Signature Algorithm"
+                    name="signatureType"
+                  >
+                    <Radio.Group
+                      optionType="button"
+                      options={[
+                        {
+                          value: SignatureType.ECDSA,
+                          label: SignatureType.ECDSA.toUpperCase(),
+                          title: SignatureType.ECDSA,
+                        },
+                        {
+                          value: SignatureType.BABYJUBJUB,
+                          label: SignatureType.BABYJUBJUB.toUpperCase(),
+                          title: SignatureType.BABYJUBJUB,
+                          disabled: true,
+                        },
+                      ]}
+                      block
+                    />
+                  </Form.Item>
+
+                  <Form.Item label="PureFi Issuer URL" name="issuerUrl">
+                    <Radio.Group
+                      optionType="button"
+                      options={[
+                        {
+                          value: ISSUER_API_URL_STAGE,
+                          label: 'STAGE',
+                          title: `${ISSUER_API_URL_STAGE}/v5/rule`,
+                        },
+                        {
+                          value: ISSUER_API_URL_PROD,
+                          label: 'PROD',
+                          title: `${ISSUER_API_URL_PROD}/v5/rule`,
+                          disabled: true,
+                        },
+                      ]}
+                      block
+                    />
+                  </Form.Item>
+
+                  <Form.Item>
+                    <Button
+                      type="primary"
+                      onClick={verificationHandler}
+                      loading={verificationLoading}
+                      block
+                    >
+                      Verify
+                    </Button>
+                  </Form.Item>
+                </Form>
+              </Col>
+              <Col
+                className="gutter-row"
+                xs={24}
+                lg={12}
+                style={{ height: '100%' }}
+              >
+                <Flex vertical gap="8px">
+                  <div>
+                    <div style={{ paddingBottom: 8 }}>
+                      <Tooltip title="This object represents combination of PureFi Message and corresponding EIP-712 Signature">
+                        PureFi Payload (Input) <InfoCircleOutlined />
+                      </Tooltip>
+                    </div>
+                    <div className={styles.playground__payload}>
+                      <pre>
+                        {purefiPayload
+                          ? JSON.stringify(
+                              {
+                                ...purefiPayload,
+
+                                signType: signatureTypeValue,
+                              },
+                              null,
+                              4
+                            )
+                          : ''}
+                      </pre>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ paddingBottom: 8 }}>
+                      <Tooltip title="In case of successfull verification PureFi Issuer responds with 200 status code and plain text which is known as PureFi Package">
+                        PureFi Package (Output) <InfoCircleOutlined />
+                      </Tooltip>
+                    </div>
+                    <div className={styles.playground__payload}>
+                      <pre>{purefiPackage ?? ''}</pre>
+                    </div>
+                  </div>
+                </Flex>
+              </Col>
+            </Row>
+          </Card>
+        </Space>
+      )}
 
       <Modal
-        className={styles.modal}
         title="Signature (EIP-712)"
         open={isSignatureModalOpen}
         onCancel={closeSignatureModalHandler}
@@ -1442,6 +1500,86 @@ const Playground: FC = () => {
           <Typography.Text type="secondary">
             Proceed in your wallet
           </Typography.Text>
+        </Flex>
+      </Modal>
+
+      <Modal
+        title="Verification Process"
+        open={isVerificationModalOpen}
+        onCancel={closeVerificationModalHandler}
+        footer={null}
+        maskClosable={false}
+        destroyOnClose
+        centered
+      >
+        <Flex align="center" justify="center" style={{ marginTop: 40 }}>
+          {verificationLoading && (
+            <Flex align="center" gap="20px" vertical>
+              <LoadingOutlined style={{ fontSize: 40 }} />
+              <Typography.Text type="secondary">
+                Verification in progress
+              </Typography.Text>
+            </Flex>
+          )}
+
+          {!verificationLoading && (
+            <>
+              {purefiError !== null ? (
+                <div>
+                  {isVerificationAllowed && (
+                    <Result
+                      status="warning"
+                      title="Additional Verification Required"
+                      subTitle="Proceed to PureFi Dashboard"
+                      extra={
+                        <Button
+                          type="primary"
+                          onClick={proceedToDashboard}
+                          block
+                        >
+                          PureFi Dashboard <ExportOutlined />
+                        </Button>
+                      }
+                    />
+                  )}
+
+                  {!isVerificationAllowed && (
+                    <Result
+                      status="error"
+                      title="Error!"
+                      subTitle={purefiError}
+                      extra={[
+                        <Button
+                          type="primary"
+                          onClick={closeVerificationModalHandler}
+                          block
+                        >
+                          OK
+                        </Button>,
+                      ]}
+                    />
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <Result
+                    status="success"
+                    title="Success!"
+                    subTitle="Now you can use obtained PureFi Package as a payload"
+                    extra={[
+                      <Button
+                        type="primary"
+                        onClick={closeVerificationModalHandler}
+                        block
+                      >
+                        OK
+                      </Button>,
+                    ]}
+                  />
+                </div>
+              )}
+            </>
+          )}
         </Flex>
       </Modal>
     </div>

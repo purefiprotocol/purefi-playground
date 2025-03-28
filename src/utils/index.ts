@@ -18,3 +18,11 @@ export const getTransactionLink = (hash: string, chain?: Chain) => {
 
   return `${explorerUrl}/tx/${hash}`;
 };
+
+export const sleep = async (ms = 100) => {
+  await new Promise<void>((resolve) => {
+    setTimeout(() => {
+      resolve();
+    }, ms);
+  });
+};
