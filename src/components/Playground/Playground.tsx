@@ -20,11 +20,14 @@ import {
   Flex,
   Form,
   Input,
+  Modal,
   Radio,
   RadioChangeEvent,
   Row,
   Select,
   Space,
+  Tooltip,
+  Typography,
 } from 'antd';
 
 import styles from './Playground.module.scss';
@@ -39,16 +42,17 @@ import { useAccount } from 'wagmi';
 import { checkIfChainSupported } from '@/utils';
 import { useMediaQuery } from 'react-responsive';
 import { DEFAULT_CHAIN_VIEM } from '@/config';
+import { InfoCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 
 enum PresetTypeEnum {
-  'CUSTOM' = 0,
-  'PUREFI_AML' = 1,
-  'PUREFI_KYC' = 2,
+  CUSTOM = 0,
+  PUREFI_AML = 1,
+  PUREFI_KYC = 2,
 }
 
-enum TestEnum {
-  SIX = 6,
-  BEX = 18,
+enum ImplementationEnum {
+  FRONTEND = 0,
+  BACKEND = 1,
 }
 
 interface PayloadFields {
@@ -69,13 +73,15 @@ interface PayloadFields {
   tokenPaymentDecimals?: number;
 }
 
-interface BasicSettingsFields {
-  issuerUrl?: string;
-  customSigner?: boolean;
+interface SignatureProcessFields {
+  implementation?: ImplementationEnum;
   customSignerUrl?: string;
+  accountAddress?: string;
+  chainId?: number;
 }
 
 interface VerificationProcessFormFields {
+  issuerUrl?: string;
   signatureType?: string;
 }
 
@@ -157,6 +163,30 @@ const Playground: FC = () => {
 
   const account = useAccount();
 
+  useEffect(() => {
+    signatureProcessForm.setFields([
+      {
+        name: 'accountAddress',
+        value: account.address || '',
+      },
+    ]);
+    setPurefiPayload(null);
+  }, [account.address]);
+
+  useEffect(() => {
+    signatureProcessForm.setFields([
+      {
+        name: 'chainId',
+        value: account.chainId || DEFAULT_CHAIN_VIEM.id,
+      },
+    ]);
+    setPurefiPayload(null);
+  }, [account.chainId]);
+
+  const [presetType, setPresetType] = useState<PresetTypeEnum>(
+    PresetTypeEnum.CUSTOM
+  );
+
   const isWalletConnected = account.isConnected;
   const isChainSupported = checkIfChainSupported(account.chainId);
   const isReady = isWalletConnected && isChainSupported;
@@ -164,389 +194,15 @@ const Playground: FC = () => {
   const [purefiError, setPurefiError] = useState<string | null>(null);
   const [isVerificationAllowed, setIsVerificationAllowed] = useState(false);
 
+  const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
+
   const [purefiPayload, setPurefiPayload] =
     useState<PureFIRuleV5Payload | null>(null);
-  const [purefiData, setPurefiData] = useState<string | null>(null);
 
-  const [signatureLoading, setSignatureLoading] = useState(false);
-  const [customSignerLoading, setCustomSignerLoading] = useState(false);
+  const [signatureFrontendLoading, setSignatureFrontendLoading] =
+    useState(false);
+  const [signatureBackendLoading, setSignatureBackendLoading] = useState(false);
   const [verificationLoading, setVerificationLoading] = useState(false);
-
-  const [basicSettingsForm] = Form.useForm();
-
-  const issuerUrlValue = Form.useWatch('issuerUrl', basicSettingsForm);
-  const customSignerValue = Form.useWatch('customSigner', basicSettingsForm);
-  const customSignerUrlValue = Form.useWatch(
-    'customSignerUrl',
-    basicSettingsForm
-  );
-
-  const basicSettingsFormChangeHandler = (fields: BasicSettingsFields) => {
-    if ('customSigner' in fields) {
-      basicSettingsForm.setFields([
-        {
-          name: 'customSignerUrl',
-          value: fields.customSigner ? 'http:localhost:5000/sign' : '',
-        },
-      ]);
-    }
-  };
-
-  const [payloadForm] = Form.useForm();
-
-  const packageTypeErrors = payloadForm.getFieldError('packageType');
-  const ruleIdErrors = payloadForm.getFieldError('ruleId');
-  const fromAddressErrors = payloadForm.getFieldError('fromAddress');
-  const toAddressErrors = payloadForm.getFieldError('toAddress');
-  const intermediaryAddressErrors = payloadForm.getFieldError(
-    'intermediaryAddress'
-  );
-  const payeeAddressErrors = payloadForm.getFieldError('payeeAddress');
-  const token0AddressErrors = payloadForm.getFieldError('token0Address');
-  const token0ValueErrors = payloadForm.getFieldError('token0Value');
-  const token0DecimalsErrors = payloadForm.getFieldError('token0Decimals');
-  const token1AddressErrors = payloadForm.getFieldError('token1Address');
-  const token1ValueErrors = payloadForm.getFieldError('token1Value');
-  const token1DecimalsErrors = payloadForm.getFieldError('token1Decimals');
-  const tokenPaymentAddressErrors = payloadForm.getFieldError(
-    'tokenPaymentAddress'
-  );
-  const tokenPaymentValueErrors =
-    payloadForm.getFieldError('tokenPaymentValue');
-  const tokenPaymentDecimalsErrors = payloadForm.getFieldError(
-    'tokenPaymentDecimals'
-  );
-
-  const packageTypeValue = Form.useWatch('packageType', payloadForm);
-  const ruleIdValue = Form.useWatch('ruleId', payloadForm);
-  const fromAddressValue = Form.useWatch('fromAddress', payloadForm);
-  const toAddressValue = Form.useWatch('toAddress', payloadForm);
-  const intermediaryAddressValue = Form.useWatch(
-    'intermediaryAddress',
-    payloadForm
-  );
-  const payeeAddressValue = Form.useWatch('payeeAddress', payloadForm);
-  const token0AddressValue = Form.useWatch('token0Address', payloadForm);
-  const token0ValueValue = Form.useWatch('token0Value', payloadForm);
-  const token0DecimalsValue = Form.useWatch('token0Decimals', payloadForm);
-  const token1AddressValue = Form.useWatch('token1Address', payloadForm);
-  const token1ValueValue = Form.useWatch('token1Value', payloadForm);
-  const token1DecimalsValue = Form.useWatch('token1Decimals', payloadForm);
-  const tokenPaymentAddressValue = Form.useWatch(
-    'tokenPaymentAddress',
-    payloadForm
-  );
-  const tokenPaymentValueValue = Form.useWatch(
-    'tokenPaymentValue',
-    payloadForm
-  );
-  const tokenPaymentDecimalsValue = Form.useWatch(
-    'tokenPaymentDecimals',
-    payloadForm
-  );
-
-  const payloadFormChangeHandler = (fields: PayloadFields) => {
-    console.log(fields);
-  };
-
-  const [verificationProcessForm] = Form.useForm();
-
-  const verificationProcessFormChangeHandler = (
-    fields: VerificationProcessFormFields
-  ) => {
-    console.log(fields);
-  };
-
-  const signatureTypeValue = Form.useWatch(
-    'signatureType',
-    verificationProcessForm
-  );
-
-  const [presetType, setPresetType] = useState<PresetTypeEnum>(
-    PresetTypeEnum.CUSTOM
-  );
-
-  const presetTypeChangeHandler = (e: RadioChangeEvent) => {
-    setPresetType(e.target.value);
-  };
-
-  const signMessageHandler = async () => {
-    try {
-      setSignatureLoading(true);
-
-      const walletClient = createWalletClient({
-        chain: account.chain!,
-        transport: custom((window as any).ethereum!),
-      });
-
-      const [address] = await walletClient.getAddresses();
-
-      const domain = createDomain('PureFi', account.chainId!);
-
-      const ruleV5Payload: RuleV5Payload = {
-        ruleId: '431050',
-        from: account.address!,
-        to: '0xd9f7c12906af9fd2264967fc7d4faa8a08d09dfa',
-        tokenData0: {
-          address: zeroAddress,
-          value: parseUnits('0.001', 18).toString(),
-          decimals: '18',
-        },
-        packageType: '32',
-      };
-
-      const ruleV5Data: RuleV5Data = {
-        account: {
-          address: account.address!,
-        },
-        chain: {
-          id: account.chainId!.toString(),
-        },
-        payload: ruleV5Payload,
-      };
-
-      const ruleV5Types = createRuleV5Types(ruleV5Payload);
-
-      const signature = await walletClient.signTypedData({
-        account: address,
-        domain,
-        types: ruleV5Types,
-        primaryType: 'Data',
-        message: ruleV5Data,
-      });
-
-      const payload: PureFIRuleV5Payload = {
-        message: ruleV5Data,
-        signature,
-      };
-
-      setPurefiPayload(payload);
-    } catch (error: unknown) {
-      const theError = error as BaseError;
-      console.log(theError.shortMessage);
-    } finally {
-      setSignatureLoading(false);
-    }
-  };
-
-  const customSignerHandler = async () => {
-    try {
-      setCustomSignerLoading(true);
-
-      const domain = createDomain('PureFi', account.chainId!);
-
-      const ruleV5Payload: RuleV5Payload = {
-        ruleId: '431050',
-        from: account.address!,
-        to: '0xd9f7c12906af9fd2264967fc7d4faa8a08d09dfa',
-        tokenData0: {
-          address: zeroAddress,
-          value: parseUnits('0.001', 18).toString(),
-          decimals: '18',
-        },
-        packageType: '32',
-      };
-
-      const ruleV5Data: RuleV5Data = {
-        account: {
-          address: account.address!,
-        },
-        chain: {
-          id: account.chainId!.toString(),
-        },
-        payload: ruleV5Payload,
-      };
-
-      const ruleV5Types = createRuleV5Types(ruleV5Payload);
-
-      const payload = {
-        domain,
-        types: ruleV5Types,
-        primaryType: 'Data',
-        message: ruleV5Data,
-      };
-
-      const response = await fetch(customSignerUrlValue, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (response.ok) {
-        const payload: PureFIRuleV5Payload = await response.json();
-        setPurefiPayload(payload);
-      } else {
-        const errorData = await response.json();
-
-        throw new Error(errorData.message);
-      }
-    } catch (error: unknown) {
-      const theError = error as Error;
-      console.log(theError.message);
-    } finally {
-      setCustomSignerLoading(false);
-    }
-  };
-
-  const verifyUserHandler = async () => {
-    try {
-      setVerificationLoading(true);
-
-      PureFI.setIssuerUrl(issuerUrlValue);
-
-      const data = await PureFI.verifyRuleV5(purefiPayload!);
-
-      setPurefiData(data);
-    } catch (error: unknown) {
-      const theError = error as PureFIError;
-
-      setPurefiError(theError.message);
-
-      if (theError.code === PureFIErrorCodes.FORBIDDEN) {
-        setIsVerificationAllowed(true);
-      }
-    } finally {
-      setVerificationLoading(false);
-    }
-  };
-
-  const isReadonly = presetType !== PresetTypeEnum.CUSTOM;
-
-  const isIntermediaryHidden = ['0', '32', '48', '64', '96', '112'].includes(
-    packageTypeValue
-  );
-  const isPayeeHidden = ['0', '32', '48', '128', '160', '176'].includes(
-    packageTypeValue
-  );
-  const isToken0Hidden = ['0', '64', '128', '192'].includes(packageTypeValue);
-  const isToken1Hidden = [
-    '0',
-    '32',
-    '64',
-    '96',
-    '128',
-    '160',
-    '192',
-    '224',
-  ].includes(packageTypeValue);
-  const isTokenPaymentHidden = ['0', '32', '48', '128', '160', '176'].includes(
-    packageTypeValue
-  );
-
-  const isCustomSignerUrlHidden = !customSignerValue;
-
-  const data: RuleV5Data = {
-    account: {
-      address: account.address!,
-    },
-    chain: {
-      id: account.chainId!.toString(),
-    },
-    payload: {
-      packageType: packageTypeValue,
-      ruleId: ruleIdErrors.length === 0 ? ruleIdValue : '',
-      from: fromAddressErrors.length === 0 ? fromAddressValue : '',
-      to: toAddressErrors.length === 0 ? toAddressValue : toAddressErrors,
-      ...(!isIntermediaryHidden && {
-        intermediary:
-          intermediaryAddressErrors.length === 0
-            ? intermediaryAddressValue
-            : '',
-      }),
-      ...(!isPayeeHidden && {
-        payee: payeeAddressErrors.length === 0 ? payeeAddressValue : '',
-      }),
-      ...(!isToken0Hidden && {
-        tokenData0: {
-          address: token0AddressErrors.length === 0 ? token0AddressValue : '',
-          value:
-            token0ValueValue &&
-            token0DecimalsValue &&
-            token0ValueErrors.length === 0 &&
-            token0DecimalsErrors.length === 0
-              ? parseUnits(token0ValueValue, token0DecimalsValue).toString()
-              : '',
-          decimals:
-            token0DecimalsValue && token0DecimalsErrors.length === 0
-              ? token0DecimalsValue.toString()
-              : '',
-        },
-      }),
-      ...(!isToken1Hidden && {
-        tokenData1: {
-          address: token1AddressErrors.length === 0 ? token1AddressValue : '',
-          value:
-            token1ValueValue &&
-            token1DecimalsValue &&
-            token1ValueErrors.length === 0 &&
-            token1DecimalsErrors.length === 0
-              ? parseUnits(token1ValueValue, token1DecimalsValue).toString()
-              : '',
-          decimals:
-            token1DecimalsValue && token1DecimalsErrors.length === 0
-              ? token1DecimalsValue.toString()
-              : '',
-        },
-      }),
-      ...(!isTokenPaymentHidden && {
-        paymentData: {
-          address:
-            tokenPaymentAddressErrors.length === 0
-              ? tokenPaymentAddressValue
-              : '',
-          value:
-            tokenPaymentValueValue &&
-            tokenPaymentDecimalsValue &&
-            tokenPaymentValueErrors.length === 0 &&
-            tokenPaymentDecimalsErrors.length === 0
-              ? parseUnits(
-                  tokenPaymentValueValue,
-                  tokenPaymentDecimalsValue
-                ).toString()
-              : '',
-          decimals:
-            tokenPaymentDecimalsValue && tokenPaymentDecimalsErrors.length === 0
-              ? tokenPaymentDecimalsValue.toString()
-              : '',
-        },
-      }),
-    },
-  };
-
-  const payloadConstructorTitle = (
-    <Row gutter={[8, 8]}>
-      <Col className="gutter-row" xs={24} lg={12}>
-        <h3>Payload Constructor</h3>
-      </Col>
-      <Col className="gutter-row" xs={24} lg={12}>
-        <Form.Item
-          label="Presets"
-          tooltip="Create custom payload or explore predefined PureFi presets"
-          colon={false}
-          style={{ margin: '16px 0' }}
-        >
-          <Radio.Group
-            value={presetType}
-            options={PRESET_TYPE_OPTIONS}
-            onChange={presetTypeChangeHandler}
-            optionType="button"
-            block
-          />
-        </Form.Item>
-      </Col>
-    </Row>
-  );
-
-  const resetPayloadFormHandler = () => {
-    payloadForm.resetFields();
-  };
-
-  const validatePayloadHandler = async () => {
-    await payloadForm.validateFields();
-  };
 
   useEffect(() => {
     if (presetType === PresetTypeEnum.PUREFI_AML) {
@@ -606,7 +262,468 @@ const Playground: FC = () => {
       ]);
       validatePayloadHandler();
     }
+    setPurefiPayload(null);
   }, [presetType]);
+
+  const openSignatureModalHandler = () => {
+    setIsSignatureModalOpen(true);
+  };
+
+  const closeSignatureModalHandler = () => {
+    setIsSignatureModalOpen(false);
+  };
+
+  const [payloadForm] = Form.useForm();
+
+  const packageTypeValue = Form.useWatch('packageType', payloadForm);
+  const ruleIdValue = Form.useWatch('ruleId', payloadForm);
+  const fromAddressValue = Form.useWatch('fromAddress', payloadForm);
+  const toAddressValue = Form.useWatch('toAddress', payloadForm);
+  const intermediaryAddressValue = Form.useWatch(
+    'intermediaryAddress',
+    payloadForm
+  );
+  const payeeAddressValue = Form.useWatch('payeeAddress', payloadForm);
+  const token0AddressValue = Form.useWatch('token0Address', payloadForm);
+  const token0ValueValue = Form.useWatch('token0Value', payloadForm);
+  const token0DecimalsValue = Form.useWatch('token0Decimals', payloadForm);
+  const token1AddressValue = Form.useWatch('token1Address', payloadForm);
+  const token1ValueValue = Form.useWatch('token1Value', payloadForm);
+  const token1DecimalsValue = Form.useWatch('token1Decimals', payloadForm);
+  const tokenPaymentAddressValue = Form.useWatch(
+    'tokenPaymentAddress',
+    payloadForm
+  );
+  const tokenPaymentValueValue = Form.useWatch(
+    'tokenPaymentValue',
+    payloadForm
+  );
+  const tokenPaymentDecimalsValue = Form.useWatch(
+    'tokenPaymentDecimals',
+    payloadForm
+  );
+
+  const packageTypeErrors = payloadForm.getFieldError('packageType');
+  const ruleIdErrors = payloadForm.getFieldError('ruleId');
+  const fromAddressErrors = payloadForm.getFieldError('fromAddress');
+  const toAddressErrors = payloadForm.getFieldError('toAddress');
+  const intermediaryAddressErrors = payloadForm.getFieldError(
+    'intermediaryAddress'
+  );
+  const payeeAddressErrors = payloadForm.getFieldError('payeeAddress');
+  const token0AddressErrors = payloadForm.getFieldError('token0Address');
+  const token0ValueErrors = payloadForm.getFieldError('token0Value');
+  const token0DecimalsErrors = payloadForm.getFieldError('token0Decimals');
+  const token1AddressErrors = payloadForm.getFieldError('token1Address');
+  const token1ValueErrors = payloadForm.getFieldError('token1Value');
+  const token1DecimalsErrors = payloadForm.getFieldError('token1Decimals');
+  const tokenPaymentAddressErrors = payloadForm.getFieldError(
+    'tokenPaymentAddress'
+  );
+  const tokenPaymentValueErrors =
+    payloadForm.getFieldError('tokenPaymentValue');
+  const tokenPaymentDecimalsErrors = payloadForm.getFieldError(
+    'tokenPaymentDecimals'
+  );
+
+  const payloadFormChangeHandler = (fields: PayloadFields) => {
+    setPurefiPayload(null);
+  };
+
+  const [signatureProcessForm] = Form.useForm();
+
+  const accountAddressValue = Form.useWatch(
+    'accountAddress',
+    signatureProcessForm
+  );
+  const chainIdValue = Form.useWatch('chainId', signatureProcessForm);
+  const implementationValue = Form.useWatch(
+    'implementation',
+    signatureProcessForm
+  );
+  const customSignerUrlValue = Form.useWatch(
+    'customSignerUrl',
+    signatureProcessForm
+  );
+
+  const accountAddressErrors = payloadForm.getFieldError('accountAddress');
+  const chainIdErrors = payloadForm.getFieldError('chainId');
+
+  const signatureProcessFormChangeHandler = (
+    fields: SignatureProcessFields
+  ) => {
+    if ('implementation' in fields) {
+      signatureProcessForm.setFields([
+        {
+          name: 'customSignerUrl',
+          value:
+            fields.implementation === ImplementationEnum.BACKEND
+              ? 'http:localhost:5000/sign'
+              : '',
+        },
+      ]);
+      setPurefiPayload(null);
+    }
+  };
+
+  const [verificationProcessForm] = Form.useForm();
+
+  const issuerUrlValue = Form.useWatch('issuerUrl', verificationProcessForm);
+  const signatureTypeValue = Form.useWatch(
+    'signatureType',
+    verificationProcessForm
+  );
+
+  const verificationProcessFormChangeHandler = (
+    fields: VerificationProcessFormFields
+  ) => {
+    console.log(fields);
+  };
+
+  const presetTypeChangeHandler = (e: RadioChangeEvent) => {
+    setPresetType(e.target.value);
+  };
+
+  const validatePayload = async () => {
+    try {
+      await payloadForm.validateFields({ recursive: true });
+
+      const isPayloadReady = [
+        packageTypeErrors,
+        ruleIdErrors,
+        fromAddressErrors,
+        toAddressErrors,
+        intermediaryAddressErrors,
+        payeeAddressErrors,
+        token0AddressErrors,
+        token0ValueErrors,
+        token0DecimalsErrors,
+        token1AddressErrors,
+        token1ValueErrors,
+        token1DecimalsErrors,
+        tokenPaymentAddressErrors,
+        tokenPaymentValueErrors,
+        tokenPaymentDecimalsErrors,
+      ].every((item) => item.length === 0);
+
+      return isPayloadReady;
+    } catch {
+      return false;
+    }
+  };
+
+  const validateAccount = async () => {
+    try {
+      await signatureProcessForm.validateFields({ recursive: true });
+
+      const isAccountReady = [accountAddressErrors, chainIdErrors].every(
+        (item) => item.length === 0
+      );
+
+      return isAccountReady;
+    } catch {
+      return false;
+    }
+  };
+
+  const validateAll = async () => {
+    const isPayloadReady = await validatePayload();
+    const isAccountReady = await validateAccount();
+    return isPayloadReady && isAccountReady;
+  };
+
+  const signatureFrontendHandler = async () => {
+    const isReady = await validateAll();
+
+    if (isReady) {
+      try {
+        openSignatureModalHandler();
+        setSignatureFrontendLoading(true);
+
+        const walletClient = createWalletClient({
+          chain: account.chain!,
+          transport: custom((window as any).ethereum!),
+        });
+
+        const [address] = await walletClient.getAddresses();
+
+        const domain = createDomain('PureFi', account.chainId!);
+
+        const ruleV5Payload: RuleV5Payload = {
+          ruleId: '431050',
+          from: account.address!,
+          to: '0xd9f7c12906af9fd2264967fc7d4faa8a08d09dfa',
+          tokenData0: {
+            address: zeroAddress,
+            value: parseUnits('0.001', 18).toString(),
+            decimals: '18',
+          },
+          packageType: '32',
+        };
+
+        const ruleV5Data: RuleV5Data = {
+          account: {
+            address: account.address!,
+          },
+          chain: {
+            id: account.chainId!.toString(),
+          },
+          payload: ruleV5Payload,
+        };
+
+        const ruleV5Types = createRuleV5Types(ruleV5Payload);
+
+        const signature = await walletClient.signTypedData({
+          account: address,
+          domain,
+          types: ruleV5Types,
+          primaryType: 'Data',
+          message: ruleV5Data,
+        });
+
+        const payload: PureFIRuleV5Payload = {
+          message: ruleV5Data,
+          signature,
+        };
+
+        setPurefiPayload(payload);
+      } catch (error: unknown) {
+        const theError = error as BaseError;
+        console.log(theError.shortMessage);
+      } finally {
+        setSignatureFrontendLoading(false);
+        closeSignatureModalHandler();
+      }
+    }
+  };
+
+  const signatureBackendHandler = async () => {
+    const isReady = await validateAll();
+    if (isReady) {
+      try {
+        setSignatureBackendLoading(true);
+
+        const domain = createDomain('PureFi', account.chainId!);
+
+        const ruleV5Payload: RuleV5Payload = {
+          ruleId: '431050',
+          from: account.address!,
+          to: '0xd9f7c12906af9fd2264967fc7d4faa8a08d09dfa',
+          tokenData0: {
+            address: zeroAddress,
+            value: parseUnits('0.001', 18).toString(),
+            decimals: '18',
+          },
+          packageType: '32',
+        };
+
+        const ruleV5Data: RuleV5Data = {
+          account: {
+            address: account.address!,
+          },
+          chain: {
+            id: account.chainId!.toString(),
+          },
+          payload: ruleV5Payload,
+        };
+
+        const ruleV5Types = createRuleV5Types(ruleV5Payload);
+
+        const payload = {
+          domain,
+          types: ruleV5Types,
+          primaryType: 'Data',
+          message: ruleV5Data,
+        };
+
+        const response = await fetch(customSignerUrlValue, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (response.ok) {
+          const payload: PureFIRuleV5Payload = await response.json();
+          setPurefiPayload(payload);
+        } else {
+          const errorData = await response.json();
+
+          throw new Error(errorData.message);
+        }
+      } catch (error: unknown) {
+        const theError = error as Error;
+        console.log(theError.message);
+      } finally {
+        setSignatureBackendLoading(false);
+      }
+    }
+  };
+
+  const verifyUserHandler = async () => {
+    try {
+      setVerificationLoading(true);
+
+      PureFI.setIssuerUrl(issuerUrlValue);
+
+      const data = await PureFI.verifyRuleV5(purefiPayload!);
+
+      console.log(data);
+    } catch (error: unknown) {
+      const theError = error as PureFIError;
+
+      setPurefiError(theError.message);
+
+      if (theError.code === PureFIErrorCodes.FORBIDDEN) {
+        setIsVerificationAllowed(true);
+      }
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+
+  const isPayloadReadonly = presetType !== PresetTypeEnum.CUSTOM;
+
+  const isIntermediaryHidden = ['0', '32', '48', '64', '96', '112'].includes(
+    packageTypeValue
+  );
+  const isPayeeHidden = ['0', '32', '48', '128', '160', '176'].includes(
+    packageTypeValue
+  );
+  const isToken0Hidden = ['0', '64', '128', '192'].includes(packageTypeValue);
+  const isToken1Hidden = [
+    '0',
+    '32',
+    '64',
+    '96',
+    '128',
+    '160',
+    '192',
+    '224',
+  ].includes(packageTypeValue);
+  const isTokenPaymentHidden = ['0', '32', '48', '128', '160', '176'].includes(
+    packageTypeValue
+  );
+
+  const isCustomSignerUrlHidden =
+    implementationValue !== ImplementationEnum.BACKEND;
+
+  const isAccountAddressHidden = !isCustomSignerUrlHidden;
+  const isChainIdHidden = !isCustomSignerUrlHidden;
+
+  const ruleV5Payload: RuleV5Payload = {
+    packageType: packageTypeValue,
+    ruleId: ruleIdErrors.length === 0 ? ruleIdValue : '',
+    from: fromAddressErrors.length === 0 ? fromAddressValue : '',
+    to: toAddressErrors.length === 0 ? toAddressValue : '',
+    ...(!isIntermediaryHidden && {
+      intermediary:
+        intermediaryAddressErrors.length === 0 ? intermediaryAddressValue : '',
+    }),
+    ...(!isPayeeHidden && {
+      payee: payeeAddressErrors.length === 0 ? payeeAddressValue : '',
+    }),
+    ...(!isToken0Hidden && {
+      tokenData0: {
+        address: token0AddressErrors.length === 0 ? token0AddressValue : '',
+        value:
+          token0ValueValue &&
+          token0DecimalsValue &&
+          token0ValueErrors.length === 0 &&
+          token0DecimalsErrors.length === 0
+            ? parseUnits(token0ValueValue, token0DecimalsValue).toString()
+            : '',
+        decimals:
+          token0DecimalsValue && token0DecimalsErrors.length === 0
+            ? token0DecimalsValue.toString()
+            : '',
+      },
+    }),
+    ...(!isToken1Hidden && {
+      tokenData1: {
+        address: token1AddressErrors.length === 0 ? token1AddressValue : '',
+        value:
+          token1ValueValue &&
+          token1DecimalsValue &&
+          token1ValueErrors.length === 0 &&
+          token1DecimalsErrors.length === 0
+            ? parseUnits(token1ValueValue, token1DecimalsValue).toString()
+            : '',
+        decimals:
+          token1DecimalsValue && token1DecimalsErrors.length === 0
+            ? token1DecimalsValue.toString()
+            : '',
+      },
+    }),
+    ...(!isTokenPaymentHidden && {
+      paymentData: {
+        address:
+          tokenPaymentAddressErrors.length === 0
+            ? tokenPaymentAddressValue
+            : '',
+        value:
+          tokenPaymentValueValue &&
+          tokenPaymentDecimalsValue &&
+          tokenPaymentValueErrors.length === 0 &&
+          tokenPaymentDecimalsErrors.length === 0
+            ? parseUnits(
+                tokenPaymentValueValue,
+                tokenPaymentDecimalsValue
+              ).toString()
+            : '',
+        decimals:
+          tokenPaymentDecimalsValue && tokenPaymentDecimalsErrors.length === 0
+            ? tokenPaymentDecimalsValue.toString()
+            : '',
+      },
+    }),
+  };
+
+  const ruleV5Data: RuleV5Data = {
+    account: {
+      address: accountAddressValue,
+    },
+    chain: {
+      id: chainIdValue,
+    },
+    payload: ruleV5Payload,
+  };
+
+  const payloadConstructorTitle = (
+    <Row gutter={[8, 8]}>
+      <Col className="gutter-row" xs={24} lg={12}>
+        <h3>Payload Constructor</h3>
+      </Col>
+      <Col className="gutter-row" xs={24} lg={12}>
+        <Form.Item
+          label="Presets"
+          tooltip="Create custom payload or explore predefined PureFi presets"
+          colon={false}
+          style={{ margin: '16px 0' }}
+        >
+          <Radio.Group
+            value={presetType}
+            options={PRESET_TYPE_OPTIONS}
+            onChange={presetTypeChangeHandler}
+            optionType="button"
+            block
+          />
+        </Form.Item>
+      </Col>
+    </Row>
+  );
+
+  const resetPayloadFormHandler = () => {
+    setPresetType(PresetTypeEnum.CUSTOM);
+    payloadForm.resetFields();
+    setPurefiPayload(null);
+  };
+
+  const validatePayloadHandler = async () => {
+    await payloadForm.validateFields();
+  };
 
   return (
     <div className={styles.playground}>
@@ -620,7 +737,7 @@ const Playground: FC = () => {
                   packageType: '0',
                   ruleId: '',
                   toAddress: '',
-                  fromAddress: account?.address || '',
+                  fromAddress: '',
                   intermediaryAddress: '',
                   payeeAddress: '',
                   token0Address: '',
@@ -645,7 +762,7 @@ const Playground: FC = () => {
                 >
                   <Select
                     options={PACKAGE_TYPE_OPTIONS}
-                    disabled={isReadonly}
+                    disabled={isPayloadReadonly}
                   />
                 </Form.Item>
 
@@ -677,13 +794,34 @@ const Playground: FC = () => {
                   <Input
                     type="number"
                     placeholder="431050"
-                    readOnly={isReadonly}
-                    disabled={isReadonly}
+                    readOnly={isPayloadReadonly}
+                    disabled={isPayloadReadonly}
                   />
                 </Form.Item>
 
                 <Form.Item
-                  label="From (Address)"
+                  messageVariables={{ label: 'From (Address)' }}
+                  label={
+                    <Flex gap="4px" align="baseline">
+                      <div>From (Address)</div>
+                      {!!account?.address && (
+                        <Button
+                          type="link"
+                          onClick={() => {
+                            payloadForm.setFields([
+                              {
+                                name: 'fromAddress',
+                                value: account.address!,
+                              },
+                            ]);
+                            payloadForm.validateFields(['fromAddress']);
+                          }}
+                        >
+                          (Injected)
+                        </Button>
+                      )}
+                    </Flex>
+                  }
                   name="fromAddress"
                   rules={[
                     {
@@ -715,8 +853,8 @@ const Playground: FC = () => {
                 >
                   <Input
                     placeholder={zeroAddress}
-                    readOnly={isReadonly}
-                    disabled={isReadonly}
+                    readOnly={isPayloadReadonly}
+                    disabled={isPayloadReadonly}
                   />
                 </Form.Item>
 
@@ -736,8 +874,8 @@ const Playground: FC = () => {
                 >
                   <Input
                     placeholder={zeroAddress}
-                    readOnly={isReadonly}
-                    disabled={isReadonly}
+                    readOnly={isPayloadReadonly}
+                    disabled={isPayloadReadonly}
                   />
                 </Form.Item>
 
@@ -757,8 +895,8 @@ const Playground: FC = () => {
                 >
                   <Input
                     placeholder={zeroAddress}
-                    readOnly={isReadonly}
-                    disabled={isReadonly}
+                    readOnly={isPayloadReadonly}
+                    disabled={isPayloadReadonly}
                   />
                 </Form.Item>
 
@@ -781,8 +919,8 @@ const Playground: FC = () => {
                     >
                       <Input
                         placeholder={zeroAddress}
-                        readOnly={isReadonly}
-                        disabled={isReadonly}
+                        readOnly={isPayloadReadonly}
+                        disabled={isPayloadReadonly}
                       />
                     </Form.Item>
                   </Col>
@@ -844,8 +982,8 @@ const Playground: FC = () => {
                     >
                       <Input
                         placeholder="18"
-                        readOnly={isReadonly}
-                        disabled={isReadonly}
+                        readOnly={isPayloadReadonly}
+                        disabled={isPayloadReadonly}
                       />
                     </Form.Item>
                   </Col>
@@ -870,8 +1008,8 @@ const Playground: FC = () => {
                     >
                       <Input
                         placeholder={zeroAddress}
-                        readOnly={isReadonly}
-                        disabled={isReadonly}
+                        readOnly={isPayloadReadonly}
+                        disabled={isPayloadReadonly}
                       />
                     </Form.Item>
                   </Col>
@@ -932,8 +1070,8 @@ const Playground: FC = () => {
                     >
                       <Input
                         placeholder="18"
-                        readOnly={isReadonly}
-                        disabled={isReadonly}
+                        readOnly={isPayloadReadonly}
+                        disabled={isPayloadReadonly}
                       />
                     </Form.Item>
                   </Col>
@@ -958,8 +1096,8 @@ const Playground: FC = () => {
                     >
                       <Input
                         placeholder={zeroAddress}
-                        readOnly={isReadonly}
-                        disabled={isReadonly}
+                        readOnly={isPayloadReadonly}
+                        disabled={isPayloadReadonly}
                       />
                     </Form.Item>
                   </Col>
@@ -1019,8 +1157,8 @@ const Playground: FC = () => {
                     >
                       <Input
                         placeholder="18"
-                        readOnly={isReadonly}
-                        disabled={isReadonly}
+                        readOnly={isPayloadReadonly}
+                        disabled={isPayloadReadonly}
                       />
                     </Form.Item>
                   </Col>
@@ -1056,9 +1194,9 @@ const Playground: FC = () => {
               lg={12}
               style={{ height: '100%' }}
             >
-              <div style={{ paddingBottom: 8 }}>Result</div>
+              <div style={{ paddingBottom: 8 }}>Rule V5 Payload</div>
               <div className={styles.playground__payload}>
-                <pre>{JSON.stringify(data, null, 4)}</pre>
+                <pre>{JSON.stringify(ruleV5Payload, null, 4)}</pre>
               </div>
             </Col>
           </Row>
@@ -1070,9 +1208,176 @@ const Playground: FC = () => {
               <Form
                 layout="vertical"
                 initialValues={{
-                  signatureType: SignatureType.ECDSA,
+                  implementation: ImplementationEnum.FRONTEND,
+                  customSignerUrl: 'http://localhost:5000/sign',
+                  accountAddress: account?.address || '',
+                  chainId: account?.chainId || DEFAULT_CHAIN_VIEM.id,
                 }}
+                form={signatureProcessForm}
+                onValuesChange={signatureProcessFormChangeHandler}
+                autoComplete="off"
+              >
+                <Form.Item
+                  label="Implementation"
+                  name="implementation"
+                  tooltip="What is responsible for signing generated payload above"
+                >
+                  <Radio.Group
+                    optionType="button"
+                    options={[
+                      {
+                        value: ImplementationEnum.FRONTEND,
+                        label: isMobile
+                          ? "Partner's Frontend"
+                          : "Partner's Frontend (User Wallet)",
+                      },
+                      {
+                        value: ImplementationEnum.BACKEND,
+                        label: isMobile
+                          ? "Partner's Backend"
+                          : "Partner's Backend (Custom Signer)",
+                      },
+                    ]}
+                    block
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label="Injected Wallet (Address)"
+                  name="accountAddress"
+                  hidden={isAccountAddressHidden}
+                  required={!isAccountAddressHidden}
+                  rules={[
+                    {
+                      required: !isAccountAddressHidden,
+                    },
+                    {
+                      pattern: /^(0x)[0-9a-fA-F]{40}$/,
+                      message: 'Injected Wallet (Address) Invalid',
+                    },
+                  ]}
+                  hasFeedback
+                >
+                  <Input readOnly />
+                </Form.Item>
+
+                <Form.Item
+                  messageVariables={{ label: 'Chain Id' }}
+                  label="Chain Id"
+                  name="chainId"
+                  hidden={isChainIdHidden}
+                  required={!isChainIdHidden}
+                  rules={[
+                    {
+                      required: true,
+                      validator: (rule, value) => {
+                        if (value === '') {
+                          return Promise.reject(
+                            new Error('Please enter Chain Id')
+                          );
+                        }
+
+                        if (+value <= 0) {
+                          return Promise.reject(new Error('Chain Id Invalid'));
+                        }
+
+                        return Promise.resolve();
+                      },
+                    },
+                  ]}
+                  hasFeedback
+                >
+                  <Input type="number" readOnly />
+                </Form.Item>
+
+                <Form.Item
+                  label="Partner's Custom Signer Backend URL"
+                  name="customSignerUrl"
+                  hidden={isCustomSignerUrlHidden}
+                  required={!isCustomSignerUrlHidden}
+                  rules={[
+                    {
+                      required: !isCustomSignerUrlHidden,
+                    },
+                  ]}
+                  hasFeedback
+                >
+                  <Input addonBefore="POST" />
+                </Form.Item>
+
+                <Form.Item style={{ marginTop: 30 }}>
+                  {implementationValue === ImplementationEnum.FRONTEND ? (
+                    <Button
+                      type="primary"
+                      onClick={signatureFrontendHandler}
+                      loading={signatureFrontendLoading}
+                      block
+                    >
+                      Sign
+                    </Button>
+                  ) : (
+                    <Button
+                      type="primary"
+                      onClick={signatureBackendHandler}
+                      loading={signatureBackendLoading}
+                      disabled
+                      block
+                    >
+                      Not availble
+                    </Button>
+                  )}
+                </Form.Item>
+              </Form>
+            </Col>
+            <Col
+              className="gutter-row"
+              xs={24}
+              lg={12}
+              style={{ height: '100%' }}
+            >
+              <Flex gap="10px" vertical>
+                <div>
+                  <div style={{ paddingBottom: 8 }}>
+                    <Tooltip title="EIP-712 compliant message">
+                      PureFi Message (Input) <InfoCircleOutlined />
+                    </Tooltip>
+                  </div>
+                  <div className={styles.playground__payload}>
+                    <pre>{JSON.stringify(ruleV5Data, null, 4)}</pre>
+                  </div>
+                </div>
+                <div>
+                  <div style={{ paddingBottom: 8 }}>
+                    <Tooltip
+                      title="This object is used as a payload to PureFi
+                    Issuer in Verification Process"
+                    >
+                      Signature Result (Output) <InfoCircleOutlined />
+                    </Tooltip>
+                  </div>
+                  <div className={styles.playground__payload}>
+                    <pre>
+                      {purefiPayload
+                        ? JSON.stringify(purefiPayload, null, 4)
+                        : ''}
+                    </pre>
+                  </div>
+                </div>
+              </Flex>
+            </Col>
+          </Row>
+        </Card>
+
+        <Card title={<h3>Verification Process</h3>} size="small">
+          <Row gutter={[8, 8]}>
+            <Col className="gutter-row" xs={24} lg={12}>
+              <Form
+                layout="vertical"
                 form={verificationProcessForm}
+                initialValues={{
+                  signatureType: SignatureType.ECDSA,
+                  issuerUrl: ISSUER_API_URL_STAGE,
+                }}
                 onValuesChange={verificationProcessFormChangeHandler}
                 autoComplete="off"
               >
@@ -1086,10 +1391,31 @@ const Playground: FC = () => {
                       {
                         value: SignatureType.ECDSA,
                         label: SignatureType.ECDSA.toUpperCase(),
+                        title: SignatureType.ECDSA,
                       },
                       {
                         value: SignatureType.BABYJUBJUB,
                         label: SignatureType.BABYJUBJUB.toUpperCase(),
+                        title: SignatureType.BABYJUBJUB,
+                      },
+                    ]}
+                    block
+                  />
+                </Form.Item>
+
+                <Form.Item label="PureFi Issuer URL" name="issuerUrl">
+                  <Radio.Group
+                    optionType="button"
+                    options={[
+                      {
+                        value: ISSUER_API_URL_STAGE,
+                        label: 'STAGE',
+                        title: `${ISSUER_API_URL_STAGE}/v5/rule`,
+                      },
+                      {
+                        value: ISSUER_API_URL_PROD,
+                        label: 'PROD',
+                        title: `${ISSUER_API_URL_PROD}/v5/rule`,
                       },
                     ]}
                     block
@@ -1097,102 +1423,27 @@ const Playground: FC = () => {
                 </Form.Item>
               </Form>
             </Col>
-            <Col
-              className="gutter-row"
-              xs={24}
-              lg={12}
-              style={{ height: '100%' }}
-            >
-              <div style={{ paddingBottom: 8 }}>Result</div>
-              <div className={styles.playground__payload}>
-                <pre></pre>
-              </div>
-            </Col>
-          </Row>
-        </Card>
-
-        <Card title={<h3>Basic Settings</h3>} size="small">
-          <Row gutter={[8, 8]}>
-            <Col className="gutter-row" xs={24} lg={14}>
-              <Form
-                layout="vertical"
-                form={basicSettingsForm}
-                initialValues={{
-                  issuerUrl: ISSUER_API_URL_STAGE,
-                  customSigner: false,
-                  customSignerUrl: '',
-                }}
-                onValuesChange={basicSettingsFormChangeHandler}
-                autoComplete="off"
-              >
-                <Row gutter={[8, 8]} align="bottom">
-                  <Col className="gutter-row" xs={24} lg={14}>
-                    <Form.Item
-                      className={styles.some}
-                      label="PureFi Issuer URL"
-                      name="issuerUrl"
-                    >
-                      <Radio.Group
-                        optionType="button"
-                        options={[
-                          {
-                            value: ISSUER_API_URL_STAGE,
-                            label: 'STAGE',
-                          },
-                          {
-                            value: ISSUER_API_URL_PROD,
-                            label: 'PROD',
-                          },
-                        ]}
-                        block
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col className="gutter-row" xs={24} lg={10}>
-                    <Form.Item name="issuerUrl">
-                      <Input variant="filled" readOnly />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[8, 8]} align="bottom">
-                  <Col className="gutter-row" xs={24} lg={14}>
-                    <Form.Item
-                      className={styles.some}
-                      label="Partner's Custom Signer Backend URL"
-                      name="customSigner"
-                    >
-                      <Radio.Group
-                        optionType="button"
-                        options={[
-                          {
-                            value: false,
-                            label: 'NONE',
-                          },
-                          {
-                            value: true,
-                            label: 'CUSTOM',
-                          },
-                        ]}
-                        block
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col className="gutter-row" xs={24} lg={10}>
-                    <Form.Item
-                      name="customSignerUrl"
-                      hidden={isCustomSignerUrlHidden}
-                    >
-                      <Input />
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </Form>
-            </Col>
           </Row>
         </Card>
       </Space>
+
+      <Modal
+        className={styles.modal}
+        title="Signature (EIP-712)"
+        open={isSignatureModalOpen}
+        onCancel={closeSignatureModalHandler}
+        footer={null}
+        maskClosable={false}
+        destroyOnClose
+        centered
+      >
+        <Flex align="center" gap="20px" vertical style={{ marginTop: 40 }}>
+          <LoadingOutlined style={{ fontSize: 40 }} />
+          <Typography.Text type="secondary">
+            Proceed in your wallet
+          </Typography.Text>
+        </Flex>
+      </Modal>
     </div>
   );
 };
