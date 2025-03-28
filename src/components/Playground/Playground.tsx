@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useRef, useState } from 'react';
 import {
   PureFI,
   PureFIError,
@@ -27,6 +27,8 @@ import {
   Select,
   Space,
   Tooltip,
+  Tour,
+  TourProps,
   Typography,
 } from 'antd';
 
@@ -44,6 +46,7 @@ import { checkIfChainSupported, sleep } from '@/utils';
 import { useMediaQuery } from 'react-responsive';
 import {
   ExportOutlined,
+  FireOutlined,
   InfoCircleOutlined,
   LoadingOutlined,
 } from '@ant-design/icons';
@@ -168,6 +171,45 @@ const Playground: FC = () => {
   const isMobile = useMediaQuery({
     query: '(max-width: 992px)',
   });
+
+  const ref1 = useRef(null);
+  const ref2 = useRef(null);
+  const ref3 = useRef(null);
+  const ref4 = useRef(null);
+
+  const [isTourOpen, setIsTourOpen] = useState<boolean>(false);
+
+  const openTour = () => {
+    setIsTourOpen(true);
+  };
+  const closeTour = () => {
+    setIsTourOpen(false);
+  };
+
+  const steps: TourProps['steps'] = [
+    {
+      title: 'Step 1. Payload Constructor',
+      description: 'Construct Rule Payload or use predefined PureFi preset.',
+      target: () => ref1.current,
+    },
+    {
+      title: 'Step 2. Signature Process',
+      description: 'Sign the Rule Payload obtained on the previous step',
+      target: () => ref2.current,
+    },
+    {
+      title: 'Step 3. Verification Process',
+      description:
+        'Finally, verify the PureFi Payload using corrsponding PureFi Issuer',
+      target: () => ref3.current,
+    },
+    {
+      title: 'PureFi Package',
+      description:
+        'In case of successfull verification, PureFi Issuer responds with PureFi Package that can be used as a payload for the following Smart Contract call',
+      target: () => ref4.current,
+    },
+  ];
 
   const account = useAccount();
 
@@ -733,7 +775,21 @@ const Playground: FC = () => {
 
       {isReady && (
         <Space direction="vertical" size="middle" style={{ display: 'flex' }}>
-          <Card title={payloadConstructorTitle} size="small">
+          <Row gutter={[16, 8]} align="stretch">
+            <Col className="gutter-row" xs={24} lg={6}>
+              <Button
+                color="purple"
+                variant="solid"
+                onClick={openTour}
+                icon={<FireOutlined />}
+                block
+              >
+                Playground Quick Tour
+              </Button>
+            </Col>
+          </Row>
+
+          <Card title={payloadConstructorTitle} size="small" ref={ref1}>
             <Row gutter={[16, 8]} align="stretch">
               <Col className="gutter-row" xs={24} lg={12}>
                 <Form
@@ -1209,7 +1265,7 @@ const Playground: FC = () => {
             </Row>
           </Card>
 
-          <Card title={<h3>2. Signature Process</h3>} size="small">
+          <Card title={<h3>2. Signature Process</h3>} size="small" ref={ref2}>
             <Row gutter={[16, 8]} align="stretch">
               <Col className="gutter-row" xs={24} lg={12}>
                 <Form
@@ -1371,7 +1427,11 @@ const Playground: FC = () => {
             </Row>
           </Card>
 
-          <Card title={<h3>3. Verification Process</h3>} size="small">
+          <Card
+            title={<h3>3. Verification Process</h3>}
+            size="small"
+            ref={ref3}
+          >
             <Row gutter={[16, 8]}>
               <Col className="gutter-row" xs={24} lg={12}>
                 <Form
@@ -1469,7 +1529,7 @@ const Playground: FC = () => {
                     </div>
                   </div>
 
-                  <div>
+                  <div ref={ref4}>
                     <div style={{ paddingBottom: 8 }}>
                       <Tooltip title="In case of successfull verification PureFi Issuer responds with 200 status code and plain text which is known as PureFi Package">
                         PureFi Package (Output) <InfoCircleOutlined />
@@ -1485,6 +1545,8 @@ const Playground: FC = () => {
           </Card>
         </Space>
       )}
+
+      <Tour open={isTourOpen} onClose={closeTour} steps={steps} />
 
       <Modal
         title="Signature (EIP-712)"
