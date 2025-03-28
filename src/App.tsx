@@ -4,7 +4,7 @@ import { createAppKit } from '@reown/appkit/react';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider } from 'antd';
-import { polygonAmoy, sepolia } from 'viem/chains';
+import { sepolia } from 'viem/chains';
 
 import {
   wagmiAdapter,
@@ -17,7 +17,6 @@ import {
 import { Layout } from '@/components';
 import { Home, NotFound } from '@/pages';
 import sepoliaSrc from './assets/sepolia.png';
-import polygonAmoySrc from './assets/polygon.webp';
 
 const queryClient = new QueryClient();
 
@@ -30,7 +29,6 @@ createAppKit({
   allowUnsupportedChain: false,
   chainImages: {
     [sepolia.id]: sepoliaSrc,
-    [polygonAmoy.id]: polygonAmoySrc,
   },
   allWallets: 'SHOW',
   features: {
