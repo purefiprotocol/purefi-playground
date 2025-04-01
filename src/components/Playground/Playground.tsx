@@ -817,7 +817,6 @@ const Playground: FC = () => {
                     label="Package Type"
                     name="packageType"
                     rules={[{ required: true }]}
-                    tooltip="Determines package structure"
                     hasFeedback
                   >
                     <Select
@@ -851,7 +850,6 @@ const Playground: FC = () => {
                         },
                       },
                     ]}
-                    tooltip="Defines set of rules that will be applied by PureFi Issuer"
                     hasFeedback
                   >
                     <Input
@@ -864,7 +862,27 @@ const Playground: FC = () => {
 
                   <Form.Item
                     messageVariables={{ label: 'From (Address)' }}
-                    label="From (Address)"
+                    label={
+                      <Flex gap="4px" align="baseline">
+                        <div>From (Address)</div>
+                        {!!account?.address && (
+                          <Button
+                            type="link"
+                            onClick={() => {
+                              payloadForm.setFields([
+                                {
+                                  name: 'fromAddress',
+                                  value: account.address!,
+                                },
+                              ]);
+                              payloadForm.validateFields(['fromAddress']);
+                            }}
+                          >
+                            (Injected)
+                          </Button>
+                        )}
+                      </Flex>
+                    }
                     name="fromAddress"
                     rules={[
                       {
@@ -875,7 +893,6 @@ const Playground: FC = () => {
                         message: 'From (Address) Invalid',
                       },
                     ]}
-                    tooltip="User wallet address"
                     hasFeedback
                   >
                     <Input placeholder={zeroAddress} />
@@ -893,7 +910,6 @@ const Playground: FC = () => {
                         message: 'To (Address) Invalid',
                       },
                     ]}
-                    tooltip="Smart contract address configured for the Subscription on PureFi Dashboard"
                     hasFeedback
                   >
                     <Input
@@ -1239,7 +1255,7 @@ const Playground: FC = () => {
                 lg={12}
                 style={{ height: '100%' }}
               >
-                <div style={{ paddingBottom: 8 }}>Rule Payload (Output)</div>
+                <div style={{ paddingBottom: 8 }}>Rule V5 Payload</div>
                 <div className={styles.playground__payload}>
                   <pre>{JSON.stringify(ruleV5Payload, null, 4)}</pre>
                 </div>
@@ -1352,18 +1368,6 @@ const Playground: FC = () => {
                   >
                     <Input addonBefore="POST" />
                   </Form.Item>
-                  <Form.Item>
-                    <div>
-                      <div style={{ paddingBottom: 8 }}>
-                        <Tooltip title="EIP-712 compliant message">
-                          PureFi Message (Input) <InfoCircleOutlined />
-                        </Tooltip>
-                      </div>
-                      <div className={styles.playground__payload}>
-                        <pre>{JSON.stringify(ruleV5Data, null, 4)}</pre>
-                      </div>
-                    </div>
-                  </Form.Item>
 
                   <Form.Item style={{ marginTop: 30 }}>
                     {implementationValue === ImplementationEnum.FRONTEND ? (
@@ -1398,7 +1402,17 @@ const Playground: FC = () => {
                 <Flex gap="10px" vertical>
                   <div>
                     <div style={{ paddingBottom: 8 }}>
-                      <Tooltip title="EIP-712 Signature">
+                      <Tooltip title="EIP-712 compliant message">
+                        PureFi Message (Input) <InfoCircleOutlined />
+                      </Tooltip>
+                    </div>
+                    <div className={styles.playground__payload}>
+                      <pre>{JSON.stringify(ruleV5Data, null, 4)}</pre>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ paddingBottom: 8 }}>
+                      <Tooltip title="">
                         EIP-712 Signature (Output) <InfoCircleOutlined />
                       </Tooltip>
                     </div>
