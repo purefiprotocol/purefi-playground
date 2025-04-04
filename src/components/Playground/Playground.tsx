@@ -1556,13 +1556,13 @@ const Playground: FC = () => {
                         required: !isCustomSignerUrlHidden,
                       },
                     ]}
-                    tooltip="Payload filed is constructed on the previous step"
+                    tooltip="Payload field is constructed on the previous step"
                   >
                     <div className={styles.playground__payload}>
                       <pre>
                         {JSON.stringify(
                           {
-                            chainId: chainIdValue,
+                            chainId: chainIdValue?.toString() || '',
                             payload: ruleV5Payload,
                           },
                           null,
@@ -1969,7 +1969,7 @@ const Playground: FC = () => {
                   <Result
                     status="success"
                     title="Success!"
-                    subTitle="Now you can use obtained PureFi Package as a payload"
+                    subTitle="Now you can use obtained PureFi Package as a part of payload for Smart contract call"
                     extra={[
                       <Button
                         type="primary"
