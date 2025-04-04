@@ -1,4 +1,4 @@
-import { FC, useEffect, useMemo, useRef, useState } from 'react';
+import { FC, useEffect, useRef, useState } from 'react';
 import {
   PureFI,
   PureFIError,
@@ -53,6 +53,7 @@ import {
 import styles from './Playground.module.scss';
 import { ConnectButton } from '../ConnectButton';
 import { Link } from 'react-router-dom';
+import { PUREFI_DEMO_CONTRACT_ABI } from '@/abi';
 
 enum PresetTypeEnum {
   CUSTOM = 0,
@@ -425,7 +426,7 @@ const Playground: FC = () => {
       signatureProcessForm.setFields([
         {
           name: 'customSignerUrl',
-          value: 'http://localhost:5000/sign',
+          value: 'http://localhost:4000/sign',
         },
       ]);
       setRuleV5DataResult(null);
@@ -728,7 +729,14 @@ const Playground: FC = () => {
       } catch (error: unknown) {
         const theError = error as PureFIError;
 
-        setPurefiError(theError.message);
+        const customizedError = theError.message.endsWith('undefined')
+          ? theError.message.slice(
+              0,
+              theError.message.length - 'undefined'.length
+            )
+          : theError.message;
+
+        setPurefiError(customizedError);
 
         if (theError.code === PureFIErrorCodes.FORBIDDEN) {
           setIsVerificationAllowed(true);
@@ -736,6 +744,30 @@ const Playground: FC = () => {
       } finally {
         setVerificationLoading(false);
       }
+    }
+  };
+
+  const smartContractCallHandler = async () => {
+    try {
+      if (isReady && purefiPackage) {
+        const walletClient = createWalletClient({
+          chain: account.chain!,
+          transport: custom((window as any).ethereum!),
+        });
+
+        const data = await walletClient.writeContract({
+          account: account.address!,
+          address: PUREFI_DEMO_CONTRACT,
+          abi: PUREFI_DEMO_CONTRACT_ABI,
+          functionName: 'buyForWithKYCPurefi1',
+          args: [account.address!, purefiPackage as `0x${string}`],
+          value: parseUnits('0.0001', 18),
+        });
+
+        console.log(data);
+      }
+    } catch (error: unknown) {
+      console.log(error);
     }
   };
 
@@ -1451,6 +1483,10 @@ const Playground: FC = () => {
                 </Flex>
                 <div className={styles.playground__payload}>
                   <pre>{JSON.stringify(ruleV5Payload, null, 4)}</pre>
+                  <Typography.Text
+                    className={styles.playground__copy}
+                    copyable={{ text: JSON.stringify(ruleV5Payload, null, 4) }}
+                  />
                 </div>
               </Col>
             </Row>
@@ -1462,7 +1498,7 @@ const Playground: FC = () => {
                 <Form
                   layout="vertical"
                   initialValues={{
-                    customSignerUrl: 'http://localhost:5000/sign',
+                    customSignerUrl: 'http://localhost:4000/sign',
                     accountAddress: account?.address || '',
                     chainId: account?.chainId || '',
                   }}
@@ -1569,6 +1605,20 @@ const Playground: FC = () => {
                           4
                         )}
                       </pre>
+
+                      <Typography.Text
+                        className={styles.playground__copy}
+                        copyable={{
+                          text: JSON.stringify(
+                            {
+                              chainId: chainIdValue?.toString() || '',
+                              payload: ruleV5Payload,
+                            },
+                            null,
+                            4
+                          ),
+                        }}
+                      />
                     </div>
                   </Form.Item>
 
@@ -1625,6 +1675,23 @@ const Playground: FC = () => {
                           ? JSON.stringify(ruleV5DataResult, null, 4)
                           : ''}
                       </pre>
+
+                      {!!(isFrontendImplementation
+                        ? JSON.stringify(ruleV5Data, null, 4)
+                        : ruleV5DataResult
+                        ? JSON.stringify(ruleV5DataResult, null, 4)
+                        : '') ? (
+                        <Typography.Text
+                          className={styles.playground__copy}
+                          copyable={{
+                            text: isFrontendImplementation
+                              ? JSON.stringify(ruleV5Data, null, 4)
+                              : ruleV5DataResult
+                              ? JSON.stringify(ruleV5DataResult, null, 4)
+                              : '',
+                          }}
+                        />
+                      ) : null}
                     </div>
                   </div>
 
@@ -1641,6 +1708,15 @@ const Playground: FC = () => {
 
                     <div className={styles.playground__payload}>
                       <pre>{purefiPayload ? purefiPayload.signature : ''}</pre>
+
+                      {!!(purefiPayload ? purefiPayload.signature : '') ? (
+                        <Typography.Text
+                          className={styles.playground__copy}
+                          copyable={{
+                            text: purefiPayload ? purefiPayload.signature : '',
+                          }}
+                        />
+                      ) : null}
                     </div>
                   </div>
                 </Flex>
@@ -1742,6 +1818,33 @@ const Playground: FC = () => {
                             )
                           : ''}
                       </pre>
+
+                      {!!(purefiPayload
+                        ? JSON.stringify(
+                            {
+                              ...purefiPayload,
+                              signType: signatureTypeValue,
+                            },
+                            null,
+                            4
+                          )
+                        : '') ? (
+                        <Typography.Text
+                          className={styles.playground__copy}
+                          copyable={{
+                            text: purefiPayload
+                              ? JSON.stringify(
+                                  {
+                                    ...purefiPayload,
+                                    signType: signatureTypeValue,
+                                  },
+                                  null,
+                                  4
+                                )
+                              : '',
+                          }}
+                        />
+                      ) : null}
                     </div>
                   </Form.Item>
 
@@ -1776,12 +1879,31 @@ const Playground: FC = () => {
                     </Flex>
                     <div className={styles.playground__payload}>
                       <pre>{purefiPackage ?? ''}</pre>
+
+                      {!!(purefiPackage ?? '') ? (
+                        <Typography.Text
+                          className={styles.playground__copy}
+                          copyable={{
+                            text: purefiPackage ?? '',
+                          }}
+                        />
+                      ) : null}
                     </div>
                   </div>
                 </Flex>
               </Col>
             </Row>
           </Card>
+
+          {presetType === PresetTypeEnum.PUREFI_KYC && (
+            <Card title={<h3>4. Smart Contract</h3>} size="small">
+              <Row gutter={[16, 8]}>
+                <Col className="gutter-row" xs={24} lg={12}>
+                  <Button onClick={smartContractCallHandler}>Call</Button>
+                </Col>
+              </Row>
+            </Card>
+          )}
         </Space>
       )}
 

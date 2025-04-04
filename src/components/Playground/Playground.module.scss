@@ -10,7 +10,8 @@
 }
 
 .playground__payload {
-  padding: 10px;
+  position: relative;
+  padding: 10px 40px 10px 10px;
   background-color: $gray4;
   border: 1px solid $gray5;
   border-radius: 8px;
@@ -19,5 +20,11 @@
   pre {
     margin: 0;
     overflow: auto;
+  }
+
+  .playground__copy {
+    position: absolute;
+    top: 10px;
+    right: 10px;
   }
 }
