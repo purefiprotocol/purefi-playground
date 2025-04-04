@@ -1996,26 +1996,27 @@ const Playground: FC = () => {
             <Row gutter={[16, 8]}>
               <Col className="gutter-row" xs={24} lg={12}>
                 <Form layout="vertical" autoComplete="off">
-                  <Form.Item>
+                  <Form.Item
+                    label="PureFi Package"
+                    rules={[
+                      {
+                        required: true,
+                      },
+                    ]}
+                    required
+                  >
                     <Flex vertical gap="8px">
-                      <div>
-                        <Flex gap="8px" style={{ paddingBottom: 8 }}>
-                          <Typography.Text style={{ paddingRight: 8 }}>
-                            PureFi Package
-                          </Typography.Text>
-                        </Flex>
-                        <div className={styles.playground__payload}>
-                          <pre>{purefiPackage ?? ''}</pre>
+                      <div className={styles.playground__payload}>
+                        <pre>{purefiPackage ?? ''}</pre>
 
-                          {!!(purefiPackage ?? '') ? (
-                            <Typography.Text
-                              className={styles.playground__copy}
-                              copyable={{
-                                text: purefiPackage ?? '',
-                              }}
-                            />
-                          ) : null}
-                        </div>
+                        {!!(purefiPackage ?? '') ? (
+                          <Typography.Text
+                            className={styles.playground__copy}
+                            copyable={{
+                              text: purefiPackage ?? '',
+                            }}
+                          />
+                        ) : null}
                       </div>
                     </Flex>
                   </Form.Item>
