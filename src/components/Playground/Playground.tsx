@@ -24,6 +24,7 @@ import {
   Row,
   Select,
   Space,
+  Tag,
   Tooltip,
   Tour,
   TourProps,
@@ -101,52 +102,104 @@ const PUREFI_DEMO_CONTRACT = import.meta.env.VITE_PUREFI_DEMO_CONTRACT;
 
 const PACKAGE_TYPE_OPTIONS = [
   {
-    label: '0',
-    value: '0',
+    label: 'Basic',
+    title: 'Basic',
+    options: [
+      {
+        label: 'Type 0',
+        value: '0',
+        desc: 'rule, from, to',
+        title: 'Type 0 (rule, from, to)',
+      },
+      {
+        label: 'Type 32',
+        value: '32',
+        desc: 'rule, from, to, tokenData0',
+        title: 'Type 32 (rule, from, to, tokenData0)',
+      },
+      {
+        label: 'Type 48',
+        value: '48',
+        desc: 'rule, from, to, tokenData0, tokenData1',
+        title: 'Type 48 (rule, from, to, tokenData0, tokenData1)',
+      },
+    ],
   },
   {
-    label: '32',
-    value: '32',
+    label: '+ Intermediary',
+    title: 'Intermediary',
+    options: [
+      {
+        label: 'Type 128',
+        value: '128',
+        desc: 'rule, from, to, intermediary',
+        title: 'Type 128 (rule, from, to, intermediary)',
+      },
+      {
+        label: 'Type 160',
+        value: '160',
+        desc: 'rule, from, to, intermediary, tokenData0',
+        title: 'Type 160 (rule, from, to, intermediary, tokenData0)',
+      },
+      {
+        label: 'Type 176',
+        value: '176',
+        desc: 'rule, from, to, intermediary, tokenData0, tokenData1',
+        title:
+          'Type 176 (rule, from, to, intermediary, tokenData0, tokenData1)',
+      },
+    ],
   },
   {
-    label: '48',
-    value: '48',
+    label: '+ Payee',
+    title: 'Payee',
+    options: [
+      {
+        label: 'Type 64',
+        value: '64',
+        desc: 'rule, from, to, payee, paymentData',
+        title: 'Type 64 (rule, from, to, payee, paymentData)',
+      },
+      {
+        label: 'Type 96',
+        value: '96',
+        desc: 'rule, from, to, payee, paymentData, tokenData0',
+        title: 'Type 96 (rule, from, to, payee, paymentData, tokenData0)',
+      },
+      {
+        label: 'Type 112',
+        value: '112',
+        desc: 'rule, from, to, payee, paymentData, tokenData0, tokenData1',
+        title:
+          'Type 112 (rule, from, to, payee, paymentData, tokenData0, tokenData1)',
+      },
+    ],
   },
   {
-    label: '64',
-    value: '64',
-  },
-  {
-    label: '96',
-    value: '96',
-  },
-  {
-    label: '112',
-    value: '112',
-  },
-  {
-    label: '128',
-    value: '128',
-  },
-  {
-    label: '160',
-    value: '160',
-  },
-  {
-    label: '176',
-    value: '176',
-  },
-  {
-    label: '192',
-    value: '192',
-  },
-  {
-    label: '224',
-    value: '224',
-  },
-  {
-    label: '240',
-    value: '240',
+    label: '+ Intermediary + Payee',
+    title: 'Intermediary & Payee',
+    options: [
+      {
+        label: 'Type 192',
+        value: '192',
+        desc: 'rule, from, to, intermediary, payee, paymentData',
+        title: 'Type 192 (rule, from, to, intermediary, payee, paymentData)',
+      },
+      {
+        label: 'Type 224',
+        value: '224',
+        desc: 'rule, from, to, intermediary, payee, paymentData, tokenData0',
+        title:
+          'Type 224 (rule, from, to, intermediary, payee, paymentData, tokenData0)',
+      },
+      {
+        label: 'Type 240',
+        value: '240',
+        desc: 'rule, from, to, intermediary, payee, paymentData, tokenData0, tokenData1',
+        title:
+          'Type 240 (rule, from, to, intermediary, payee, paymentData, tokenData0, tokenData1)',
+      },
+    ],
   },
 ];
 
@@ -187,7 +240,7 @@ const Playground: FC = () => {
   const steps: TourProps['steps'] = [
     {
       title: 'Step 1. Payload Constructor',
-      description: 'Construct Rule Payload or use predefined PureFi preset.',
+      description: 'Construct Payload or use predefined PureFi preset',
       target: () => ref1.current,
     },
     {
@@ -240,7 +293,7 @@ const Playground: FC = () => {
   }, [account.chainId]);
 
   const [presetType, setPresetType] = useState<PresetTypeEnum>(
-    PresetTypeEnum.CUSTOM
+    PresetTypeEnum.PUREFI_AML
   );
 
   const isWalletConnected = account.isConnected;
@@ -727,7 +780,7 @@ const Playground: FC = () => {
       <Col className="gutter-row" xs={24} lg={12}>
         <Form.Item
           label="Presets"
-          tooltip="Create custom payload or explore predefined PureFi presets"
+          tooltip="Create custom payload or see in action a couple of predefined PureFi presets"
           colon={false}
           style={{ margin: '16px 0' }}
         >
@@ -817,11 +870,25 @@ const Playground: FC = () => {
                     label="Package Type"
                     name="packageType"
                     rules={[{ required: true }]}
+                    tooltip="Determines package structure"
                     hasFeedback
                   >
                     <Select
                       options={PACKAGE_TYPE_OPTIONS}
                       disabled={isPayloadReadonly}
+                      optionRender={(option) => {
+                        console.log(option);
+
+                        return (
+                          <Space>
+                            <Typography.Text>{option.label}</Typography.Text>
+                            <Typography.Text type="secondary">
+                              {/* @ts-ignore */}
+                              {option.data?.desc}
+                            </Typography.Text>
+                          </Space>
+                        );
+                      }}
                     />
                   </Form.Item>
 
@@ -850,6 +917,7 @@ const Playground: FC = () => {
                         },
                       },
                     ]}
+                    tooltip="Defines set of rules that will be applied by PureFi Issuer. Highly flexible parameter, must be disscussed with PureFi team"
                     hasFeedback
                   >
                     <Input
@@ -893,6 +961,7 @@ const Playground: FC = () => {
                         message: 'From (Address) Invalid',
                       },
                     ]}
+                    tooltip="User wallet address"
                     hasFeedback
                   >
                     <Input placeholder={zeroAddress} />
@@ -910,6 +979,7 @@ const Playground: FC = () => {
                         message: 'To (Address) Invalid',
                       },
                     ]}
+                    tooltip="Smart contract address configured for the Subscription on PureFi Dashboard"
                     hasFeedback
                   >
                     <Input
@@ -1255,7 +1325,13 @@ const Playground: FC = () => {
                 lg={12}
                 style={{ height: '100%' }}
               >
-                <div style={{ paddingBottom: 8 }}>Rule V5 Payload</div>
+                <Flex gap="8px" style={{ paddingBottom: 8 }}>
+                  <Tag color="geekblue">OUTPUT</Tag>
+                  <Typography.Text strong>Rule Payload</Typography.Text>
+                  <Tooltip title="This JSON will be used on the second step as a part of EIP-712 message Object">
+                    <InfoCircleOutlined />
+                  </Tooltip>
+                </Flex>
                 <div className={styles.playground__payload}>
                   <pre>{JSON.stringify(ruleV5Payload, null, 4)}</pre>
                 </div>
@@ -1458,7 +1534,6 @@ const Playground: FC = () => {
                           value: SignatureType.BABYJUBJUB,
                           label: SignatureType.BABYJUBJUB.toUpperCase(),
                           title: SignatureType.BABYJUBJUB,
-                          disabled: true,
                         },
                       ]}
                       block
