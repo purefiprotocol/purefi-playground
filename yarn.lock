@@ -905,10 +905,10 @@
   resolved "https://registry.yarnpkg.com/@paulmillr/qr/-/qr-0.2.1.tgz#76ade7080be4ac4824f638146fd8b6db1805eeca"
   integrity sha512-IHnV6A+zxU7XwmKFinmYjUcwlyK9+xkG3/s9KcQhI9BjQKycrJ1JRO+FbNYPwZiPKW3je/DR0k7w8/gLa5eaxQ==
 
-"@purefi/verifier-sdk@^8.0.0-beta.0":
-  version "8.0.0-beta.0"
-  resolved "https://registry.yarnpkg.com/@purefi/verifier-sdk/-/verifier-sdk-8.0.0-beta.0.tgz#2699ae77d44c30d051eba1992017c2f590febb3e"
-  integrity sha512-vhVj6315VkZ4P7eJZw+5e8PKoJ6zDUtq6viB9QblNDiGq2DVgTz373GBMCPivBkVPQFaBdWrq/l7Qp2sdoPchw==
+"@purefi/verifier-sdk@^8.0.0":
+  version "8.0.0"
+  resolved "https://registry.yarnpkg.com/@purefi/verifier-sdk/-/verifier-sdk-8.0.0.tgz#84026a1e08082a6434f5101a62fc5669f54d431e"
+  integrity sha512-U43Lcp09ee85G9GRoQjCap4o08/EsFWGK30jhv6wqvo3LmEiZrpafviTwBYTnV2vs0G6XtaIwrhEPyjIvyx3vg==
   dependencies:
     axios "^1.7.9"
     eth-rpc-errors "^4.0.3"

@@ -1,4 +1,4 @@
-import { FC, useEffect, useRef, useState } from 'react';
+import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import {
   PureFI,
   PureFIError,
@@ -52,6 +52,7 @@ import {
 
 import styles from './Playground.module.scss';
 import { ConnectButton } from '../ConnectButton';
+import { Link } from 'react-router-dom';
 
 enum PresetTypeEnum {
   CUSTOM = 0,
@@ -83,7 +84,6 @@ interface PayloadFields {
 }
 
 interface SignatureProcessFields {
-  implementation?: ImplementationEnum;
   customSignerUrl?: string;
   accountAddress?: string;
   chainId?: number;
@@ -218,6 +218,19 @@ const PRESET_TYPE_OPTIONS = [
   },
 ];
 
+const IMPLEMENTATION_OPTIONS = [
+  {
+    value: ImplementationEnum.FRONTEND,
+    label: "Partner's Frontend",
+    title: "Partner's Frontend (User Wallet)",
+  },
+  {
+    value: ImplementationEnum.BACKEND,
+    label: "Partner's Backend",
+    title: "Partner's Backend (Custom Signer)",
+  },
+];
+
 const Playground: FC = () => {
   const isMobile = useMediaQuery({
     query: '(max-width: 992px)',
@@ -240,7 +253,7 @@ const Playground: FC = () => {
   const steps: TourProps['steps'] = [
     {
       title: 'Step 1. Payload Constructor',
-      description: 'Construct Payload or use predefined PureFi preset',
+      description: 'Construct Rule Payload or use predefined PureFi presets',
       target: () => ref1.current,
     },
     {
@@ -293,27 +306,44 @@ const Playground: FC = () => {
   }, [account.chainId]);
 
   const [presetType, setPresetType] = useState<PresetTypeEnum>(
-    PresetTypeEnum.PUREFI_AML
+    PresetTypeEnum.CUSTOM
+  );
+
+  const [implementation, setImplementation] = useState<ImplementationEnum>(
+    ImplementationEnum.FRONTEND
   );
 
   const isWalletConnected = account.isConnected;
   const isChainSupported = checkIfChainSupported(account.chainId);
   const isReady = isWalletConnected && isChainSupported;
 
+  const [partnersFrontendError, setPartnersFrontendError] = useState<
+    string | null
+  >(null);
+  const [partnersBackendError, setPartnersBackendError] = useState<
+    string | null
+  >(null);
   const [purefiError, setPurefiError] = useState<string | null>(null);
+
   const [isVerificationAllowed, setIsVerificationAllowed] = useState(false);
 
-  const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
+  const [isPartnersFrontendModalOpen, setIsPartnersFrontendModalOpen] =
+    useState(false);
+  const [isPartnersBackendModalOpen, setIsPartnersBackendModalOpen] =
+    useState(false);
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
 
   const [purefiPayload, setPurefiPayload] =
     useState<PureFIRuleV5Payload | null>(null);
 
+  const [ruleV5DataResult, setRuleV5DataResult] = useState<RuleV5Data | null>(
+    null
+  );
+
   const [purefiPackage, setPurefiPackage] = useState<string | null>(null);
 
-  const [signatureFrontendLoading, setSignatureFrontendLoading] =
-    useState(false);
-  const [signatureBackendLoading, setSignatureBackendLoading] = useState(false);
+  const [partnersFrontendLoading, setPartnersFrontendLoading] = useState(false);
+  const [partnersBackendLoading, setPartnersBackendLoading] = useState(false);
   const [verificationLoading, setVerificationLoading] = useState(false);
 
   useEffect(() => {
@@ -378,12 +408,51 @@ const Playground: FC = () => {
     setPurefiPackage(null);
   }, [presetType]);
 
-  const openSignatureModalHandler = () => {
-    setIsSignatureModalOpen(true);
+  const isFrontendImplementation =
+    implementation === ImplementationEnum.FRONTEND;
+
+  useEffect(() => {
+    if (isFrontendImplementation) {
+      signatureProcessForm.setFields([
+        {
+          name: 'customSignerUrl',
+          value: '',
+        },
+      ]);
+
+      setRuleV5DataResult(null);
+    } else {
+      signatureProcessForm.setFields([
+        {
+          name: 'customSignerUrl',
+          value: 'http://localhost:5000/sign',
+        },
+      ]);
+      setRuleV5DataResult(null);
+    }
+    setPurefiPackage(null);
+  }, [isFrontendImplementation]);
+
+  const openPartnersFrontendModalHandler = () => {
+    setIsPartnersFrontendModalOpen(true);
   };
 
-  const closeSignatureModalHandler = () => {
-    setIsSignatureModalOpen(false);
+  const closePartnersFrontendModalHandler = () => {
+    if (!partnersFrontendLoading) {
+      setIsPartnersFrontendModalOpen(false);
+      setPartnersFrontendError(null);
+    }
+  };
+
+  const openPartnersBackendModalOpen = () => {
+    setIsPartnersBackendModalOpen(true);
+  };
+
+  const closePartnersBackendModalOpen = () => {
+    if (!partnersBackendLoading) {
+      setIsPartnersBackendModalOpen(false);
+      setPartnersBackendError(null);
+    }
   };
 
   const openVerificationModalHandler = () => {
@@ -463,10 +532,7 @@ const Playground: FC = () => {
     signatureProcessForm
   );
   const chainIdValue = Form.useWatch('chainId', signatureProcessForm);
-  const implementationValue = Form.useWatch(
-    'implementation',
-    signatureProcessForm
-  );
+
   const customSignerUrlValue = Form.useWatch(
     'customSignerUrl',
     signatureProcessForm
@@ -478,19 +544,7 @@ const Playground: FC = () => {
   const signatureProcessFormChangeHandler = (
     fields: SignatureProcessFields
   ) => {
-    if ('implementation' in fields) {
-      signatureProcessForm.setFields([
-        {
-          name: 'customSignerUrl',
-          value:
-            fields.implementation === ImplementationEnum.BACKEND
-              ? 'http:localhost:5000/sign'
-              : '',
-        },
-      ]);
-      setPurefiPayload(null);
-      setPurefiPackage(null);
-    }
+    console.log('signatureProcessForm', fields);
   };
 
   const [verificationProcessForm] = Form.useForm();
@@ -504,11 +558,21 @@ const Playground: FC = () => {
   const verificationProcessFormChangeHandler = (
     fields: VerificationProcessFormFields
   ) => {
-    console.log(fields);
+    console.log('verificationProcessForm', fields);
+
+    if ('signatureType' in fields) {
+      setPurefiPackage(null);
+    }
   };
 
   const presetTypeChangeHandler = (e: RadioChangeEvent) => {
     setPresetType(e.target.value);
+  };
+
+  const implementationChangeHandler = (e: RadioChangeEvent) => {
+    setImplementation(e.target.value);
+    setPurefiPayload(null);
+    setPurefiPackage(null);
   };
 
   const validatePayload = async () => {
@@ -564,8 +628,8 @@ const Playground: FC = () => {
 
     if (isReady) {
       try {
-        openSignatureModalHandler();
-        setSignatureFrontendLoading(true);
+        openPartnersFrontendModalHandler();
+        setPartnersFrontendLoading(true);
 
         const walletClient = createWalletClient({
           chain: account.chain!,
@@ -591,22 +655,32 @@ const Playground: FC = () => {
           signature,
         };
 
+        setRuleV5DataResult(ruleV5Data);
         setPurefiPayload(payload);
       } catch (error: unknown) {
         const theError = error as BaseError;
-        console.log(theError.shortMessage);
+        setPartnersFrontendError(theError.shortMessage);
       } finally {
-        setSignatureFrontendLoading(false);
-        closeSignatureModalHandler();
+        setPartnersFrontendLoading(false);
       }
     }
   };
 
   const signatureBackendHandler = async () => {
     const isReady = await validateAll();
+
     if (isReady) {
       try {
-        setSignatureBackendLoading(true);
+        setPartnersBackendLoading(true);
+
+        openPartnersBackendModalOpen();
+
+        await sleep(1000);
+
+        const requestBody = {
+          chainId: chainIdValue,
+          payload: ruleV5Payload,
+        };
 
         const response = await fetch(customSignerUrlValue, {
           method: 'POST',
@@ -614,22 +688,22 @@ const Playground: FC = () => {
             'Content-Type': 'application/json',
             Accept: 'application/json',
           },
-          body: JSON.stringify(ruleV5Data),
+          body: JSON.stringify(requestBody),
         });
 
         if (response.ok) {
-          const payload: PureFIRuleV5Payload = await response.json();
-          setPurefiPayload(payload);
+          const data: PureFIRuleV5Payload = await response.json();
+          setRuleV5DataResult(data.message);
+          setPurefiPayload(data);
         } else {
           const errorData = await response.json();
-
-          throw new Error(errorData.message);
+          throw new Error(errorData.error);
         }
       } catch (error: unknown) {
         const theError = error as Error;
-        console.log(theError.message);
+        setPartnersBackendError(theError.message);
       } finally {
-        setSignatureBackendLoading(false);
+        setPartnersBackendLoading(false);
       }
     }
   };
@@ -688,8 +762,7 @@ const Playground: FC = () => {
     packageTypeValue
   );
 
-  const isCustomSignerUrlHidden =
-    implementationValue !== ImplementationEnum.BACKEND;
+  const isCustomSignerUrlHidden = isFrontendImplementation;
 
   const isAccountAddressHidden = !isCustomSignerUrlHidden;
   const isChainIdHidden = !isCustomSignerUrlHidden;
@@ -780,7 +853,7 @@ const Playground: FC = () => {
       <Col className="gutter-row" xs={24} lg={12}>
         <Form.Item
           label="Presets"
-          tooltip="Create custom payload or see in action a couple of predefined PureFi presets"
+          tooltip="Construct custom payload or see in action a couple of predefined PureFi presets"
           colon={false}
           style={{ margin: '16px 0' }}
         >
@@ -788,6 +861,30 @@ const Playground: FC = () => {
             value={presetType}
             options={PRESET_TYPE_OPTIONS}
             onChange={presetTypeChangeHandler}
+            optionType="button"
+            block
+          />
+        </Form.Item>
+      </Col>
+    </Row>
+  );
+
+  const signatureProcessTitle = (
+    <Row gutter={[16, 8]}>
+      <Col className="gutter-row" xs={24} lg={12}>
+        <h3>2. Signature Process</h3>
+      </Col>
+      <Col className="gutter-row" xs={24} lg={12}>
+        <Form.Item
+          label="Implementation"
+          tooltip="Example of implementation, e.g. what is responsible for signing generated payload above"
+          colon={false}
+          style={{ margin: '16px 0' }}
+        >
+          <Radio.Group
+            value={implementation}
+            options={IMPLEMENTATION_OPTIONS}
+            onChange={implementationChangeHandler}
             optionType="button"
             block
           />
@@ -826,6 +923,24 @@ const Playground: FC = () => {
 
       {isReady && (
         <Space direction="vertical" size="middle" style={{ display: 'flex' }}>
+          <Row gutter={[16, 8]} align="stretch">
+            <Col className="gutter-row" xs={24} lg={12}>
+              <Typography.Text style={{ fontSize: 16 }}>
+                <span style={{ paddingRight: 5 }}>
+                  To get a high level picture of the process, please take a look
+                  at
+                </span>
+                <Link
+                  target="_blank"
+                  rel="noopener norefferer"
+                  to="https://docs.purefi.io/docs/overview"
+                >
+                  <span>Overview</span> <ExportOutlined />
+                </Link>
+                <span style={{ paddingLeft: 5 }}>section of the docs</span>
+              </Typography.Text>
+            </Col>
+          </Row>
           <Row gutter={[16, 8]} align="stretch">
             <Col className="gutter-row" xs={24} lg={6}>
               <Button
@@ -1327,8 +1442,10 @@ const Playground: FC = () => {
               >
                 <Flex gap="8px" style={{ paddingBottom: 8 }}>
                   <Tag color="geekblue">OUTPUT</Tag>
-                  <Typography.Text strong>Rule Payload</Typography.Text>
                   <Tooltip title="This JSON will be used on the second step as a part of EIP-712 message Object">
+                    <Typography.Text style={{ paddingRight: 8 }}>
+                      Rule Payload
+                    </Typography.Text>
                     <InfoCircleOutlined />
                   </Tooltip>
                 </Flex>
@@ -1339,13 +1456,12 @@ const Playground: FC = () => {
             </Row>
           </Card>
 
-          <Card title={<h3>2. Signature Process</h3>} size="small" ref={ref2}>
+          <Card title={signatureProcessTitle} size="small" ref={ref2}>
             <Row gutter={[16, 8]} align="stretch">
               <Col className="gutter-row" xs={24} lg={12}>
                 <Form
                   layout="vertical"
                   initialValues={{
-                    implementation: ImplementationEnum.FRONTEND,
                     customSignerUrl: 'http://localhost:5000/sign',
                     accountAddress: account?.address || '',
                     chainId: account?.chainId || '',
@@ -1354,32 +1470,6 @@ const Playground: FC = () => {
                   onValuesChange={signatureProcessFormChangeHandler}
                   autoComplete="off"
                 >
-                  <Form.Item
-                    label="Implementation"
-                    name="implementation"
-                    tooltip="What is responsible for signing generated payload above"
-                  >
-                    <Radio.Group
-                      optionType="button"
-                      options={[
-                        {
-                          value: ImplementationEnum.FRONTEND,
-                          label: isMobile
-                            ? "Partner's Frontend"
-                            : "Partner's Frontend (User Wallet)",
-                        },
-                        {
-                          value: ImplementationEnum.BACKEND,
-                          label: isMobile
-                            ? "Partner's Backend"
-                            : "Partner's Backend (Custom Signer)",
-                          disabled: true,
-                        },
-                      ]}
-                      block
-                    />
-                  </Form.Item>
-
                   <Form.Item
                     label="Injected Wallet (Address)"
                     name="accountAddress"
@@ -1431,7 +1521,18 @@ const Playground: FC = () => {
                   </Form.Item>
 
                   <Form.Item
-                    label="Partner's Custom Signer Backend URL"
+                    label={
+                      <Flex gap="small">
+                        <span>Partner's Custom Signer Backend URL</span>
+                        <Link
+                          target="_blank"
+                          rel="noopener norefferer"
+                          to="https://github.com/purefiprotocol/signer-backend"
+                        >
+                          <span>Github</span> <ExportOutlined />
+                        </Link>
+                      </Flex>
+                    }
                     name="customSignerUrl"
                     hidden={isCustomSignerUrlHidden}
                     required={!isCustomSignerUrlHidden}
@@ -1440,17 +1541,43 @@ const Playground: FC = () => {
                         required: !isCustomSignerUrlHidden,
                       },
                     ]}
+                    tooltip="Public Address of Custom Signer must be configured for the Subscription on PureFi Dashboard"
                     hasFeedback
                   >
                     <Input addonBefore="POST" />
                   </Form.Item>
 
+                  <Form.Item
+                    label="Request body"
+                    hidden={isCustomSignerUrlHidden}
+                    required={!isCustomSignerUrlHidden}
+                    rules={[
+                      {
+                        required: !isCustomSignerUrlHidden,
+                      },
+                    ]}
+                    tooltip="Payload filed is constructed on the previous step"
+                  >
+                    <div className={styles.playground__payload}>
+                      <pre>
+                        {JSON.stringify(
+                          {
+                            chainId: chainIdValue,
+                            payload: ruleV5Payload,
+                          },
+                          null,
+                          4
+                        )}
+                      </pre>
+                    </div>
+                  </Form.Item>
+
                   <Form.Item style={{ marginTop: 30 }}>
-                    {implementationValue === ImplementationEnum.FRONTEND ? (
+                    {isFrontendImplementation ? (
                       <Button
                         type="primary"
                         onClick={signatureFrontendHandler}
-                        loading={signatureFrontendLoading}
+                        loading={partnersFrontendLoading}
                         block
                       >
                         Sign
@@ -1459,11 +1586,10 @@ const Playground: FC = () => {
                       <Button
                         type="primary"
                         onClick={signatureBackendHandler}
-                        loading={signatureBackendLoading}
-                        disabled
+                        loading={partnersBackendLoading}
                         block
                       >
-                        Not availble
+                        Send
                       </Button>
                     )}
                   </Form.Item>
@@ -1477,21 +1603,42 @@ const Playground: FC = () => {
               >
                 <Flex gap="10px" vertical>
                   <div>
-                    <div style={{ paddingBottom: 8 }}>
-                      <Tooltip title="EIP-712 compliant message">
-                        PureFi Message (Input) <InfoCircleOutlined />
+                    <Flex gap="8px" style={{ paddingBottom: 8 }}>
+                      <Tag
+                        color={isFrontendImplementation ? 'purple' : 'geekblue'}
+                      >
+                        {isFrontendImplementation ? 'INPUT/OUTPUT' : 'OUTPUT'}
+                      </Tag>
+                      <Tooltip title="EIP-712 compliant message that contains few fields: account, chain and payload (which is known here as Rule Payload constructed above)">
+                        <Typography.Text style={{ paddingRight: 8 }}>
+                          PureFi Message
+                        </Typography.Text>
+                        <InfoCircleOutlined />
                       </Tooltip>
-                    </div>
+                    </Flex>
+
                     <div className={styles.playground__payload}>
-                      <pre>{JSON.stringify(ruleV5Data, null, 4)}</pre>
+                      <pre>
+                        {isFrontendImplementation
+                          ? JSON.stringify(ruleV5Data, null, 4)
+                          : ruleV5DataResult
+                          ? JSON.stringify(ruleV5DataResult, null, 4)
+                          : ''}
+                      </pre>
                     </div>
                   </div>
+
                   <div>
-                    <div style={{ paddingBottom: 8 }}>
-                      <Tooltip title="">
-                        EIP-712 Signature (Output) <InfoCircleOutlined />
+                    <Flex gap="8px" style={{ paddingBottom: 8 }}>
+                      <Tag color="geekblue">OUTPUT</Tag>
+                      <Tooltip title="EIP-712 signature">
+                        <Typography.Text style={{ paddingRight: 8 }}>
+                          EIP-712 Signature
+                        </Typography.Text>
+                        <InfoCircleOutlined />
                       </Tooltip>
-                    </div>
+                    </Flex>
+
                     <div className={styles.playground__payload}>
                       <pre>{purefiPayload ? purefiPayload.signature : ''}</pre>
                     </div>
@@ -1540,7 +1687,11 @@ const Playground: FC = () => {
                     />
                   </Form.Item>
 
-                  <Form.Item label="PureFi Issuer URL" name="issuerUrl">
+                  <Form.Item
+                    label="PureFi Issuer URL"
+                    name="issuerUrl"
+                    required
+                  >
                     <Radio.Group
                       optionType="button"
                       options={[
@@ -1558,6 +1709,40 @@ const Playground: FC = () => {
                       ]}
                       block
                     />
+                  </Form.Item>
+
+                  <Form.Item required>
+                    <Input
+                      addonBefore="POST"
+                      value={`${issuerUrlValue}/v5/rule`}
+                      readOnly
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Request body"
+                    rules={[
+                      {
+                        required: true,
+                      },
+                    ]}
+                    tooltip="Request Body"
+                    required
+                  >
+                    <div className={styles.playground__payload}>
+                      <pre>
+                        {purefiPayload
+                          ? JSON.stringify(
+                              {
+                                ...purefiPayload,
+                                signType: signatureTypeValue,
+                              },
+                              null,
+                              4
+                            )
+                          : ''}
+                      </pre>
+                    </div>
                   </Form.Item>
 
                   <Form.Item>
@@ -1579,35 +1764,16 @@ const Playground: FC = () => {
                 style={{ height: '100%' }}
               >
                 <Flex vertical gap="8px">
-                  <div>
-                    <div style={{ paddingBottom: 8 }}>
-                      <Tooltip title="This object represents combination of PureFi Message and corresponding EIP-712 Signature">
-                        PureFi Payload (Input) <InfoCircleOutlined />
-                      </Tooltip>
-                    </div>
-                    <div className={styles.playground__payload}>
-                      <pre>
-                        {purefiPayload
-                          ? JSON.stringify(
-                              {
-                                ...purefiPayload,
-
-                                signType: signatureTypeValue,
-                              },
-                              null,
-                              4
-                            )
-                          : ''}
-                      </pre>
-                    </div>
-                  </div>
-
                   <div ref={ref4}>
-                    <div style={{ paddingBottom: 8 }}>
+                    <Flex gap="8px" style={{ paddingBottom: 8 }}>
+                      <Tag color="geekblue">OUTPUT</Tag>
                       <Tooltip title="In case of successfull verification PureFi Issuer responds with 200 status code and plain text which is known as PureFi Package">
-                        PureFi Package (Output) <InfoCircleOutlined />
+                        <Typography.Text style={{ paddingRight: 8 }}>
+                          PureFi Package
+                        </Typography.Text>
+                        <InfoCircleOutlined />
                       </Tooltip>
-                    </div>
+                    </Flex>
                     <div className={styles.playground__payload}>
                       <pre>{purefiPackage ?? ''}</pre>
                     </div>
@@ -1623,18 +1789,121 @@ const Playground: FC = () => {
 
       <Modal
         title="Signature (EIP-712)"
-        open={isSignatureModalOpen}
-        onCancel={closeSignatureModalHandler}
+        open={isPartnersFrontendModalOpen}
+        onCancel={closePartnersFrontendModalHandler}
         footer={null}
         maskClosable={false}
         destroyOnClose
         centered
       >
         <Flex align="center" gap="20px" vertical style={{ marginTop: 40 }}>
-          <LoadingOutlined style={{ fontSize: 40 }} />
-          <Typography.Text type="secondary">
-            Proceed in your wallet
-          </Typography.Text>
+          {partnersFrontendLoading && (
+            <>
+              {partnersFrontendError == null && (
+                <Flex align="center" gap="20px" vertical>
+                  <LoadingOutlined style={{ fontSize: 40 }} />
+                  <Typography.Text type="secondary">
+                    Proceed in your wallet
+                  </Typography.Text>
+                </Flex>
+              )}
+            </>
+          )}
+          {!partnersFrontendLoading && (
+            <>
+              {partnersFrontendError !== null ? (
+                <Result
+                  status="error"
+                  title="Error!"
+                  subTitle={partnersFrontendError}
+                  extra={[
+                    <Button
+                      type="primary"
+                      onClick={closePartnersFrontendModalHandler}
+                      block
+                    >
+                      OK
+                    </Button>,
+                  ]}
+                />
+              ) : (
+                <Result
+                  status="success"
+                  title="Success!"
+                  subTitle="Now you can follow next step"
+                  extra={[
+                    <Button
+                      type="primary"
+                      onClick={closePartnersFrontendModalHandler}
+                      block
+                    >
+                      OK
+                    </Button>,
+                  ]}
+                />
+              )}
+            </>
+          )}
+        </Flex>
+      </Modal>
+
+      <Modal
+        title="Signature (EIP-712) Patner's Backend"
+        open={isPartnersBackendModalOpen}
+        onCancel={closePartnersBackendModalOpen}
+        footer={null}
+        maskClosable={false}
+        destroyOnClose
+        centered
+      >
+        <Flex align="center" justify="center" style={{ marginTop: 40 }}>
+          {partnersBackendLoading && (
+            <>
+              {partnersBackendError == null && (
+                <Flex align="center" gap="20px" vertical>
+                  <LoadingOutlined style={{ fontSize: 40 }} />
+                  <Typography.Text type="secondary">
+                    Signing in progress
+                  </Typography.Text>
+                </Flex>
+              )}
+            </>
+          )}
+          {!partnersBackendLoading && (
+            <>
+              {partnersBackendError !== null ? (
+                <Result
+                  status="error"
+                  title="Error!"
+                  subTitle={partnersBackendError}
+                  extra={[
+                    <Button
+                      type="primary"
+                      onClick={closePartnersBackendModalOpen}
+                      block
+                    >
+                      OK
+                    </Button>,
+                  ]}
+                />
+              ) : (
+                <Result
+                  status="success"
+                  title="Success!"
+                  subTitle="Now you can follow next step"
+                  extra={[
+                    <Button
+                      type="primary"
+                      onClick={closePartnersBackendModalOpen}
+                      block
+                    >
+                      OK
+                    </Button>,
+                  ]}
+                />
+              )}
+            </>
+          )}
         </Flex>
       </Modal>
 
