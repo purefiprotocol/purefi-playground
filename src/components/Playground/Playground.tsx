@@ -271,13 +271,13 @@ const Playground: FC = () => {
     {
       title: 'Step 3. Verification Process',
       description:
-        'Finally, verify the PureFi Payload using corrsponding PureFi Issuer',
+        'Finally, verify the PureFi Payload using corresponding PureFi Issuer',
       target: () => ref3.current,
     },
     {
       title: 'PureFi Package',
       description:
-        'In case of successfull verification, PureFi Issuer responds with PureFi Package that can be used as a payload for the following Smart Contract call',
+        'In case of successful verification, PureFi Issuer responds with PureFi Package that can be used as a payload for the following Smart Contract call',
       target: () => ref4.current,
     },
     {
@@ -1967,7 +1967,7 @@ const Playground: FC = () => {
                   <div ref={ref4}>
                     <Flex gap="8px" style={{ paddingBottom: 8 }}>
                       <Tag color="geekblue">OUTPUT</Tag>
-                      <Tooltip title="In case of successfull verification PureFi Issuer responds with 200 status code and plain text which is known as PureFi Package">
+                      <Tooltip title="In case of successful verification PureFi Issuer responds with 200 status code and plain text which is known as PureFi Package">
                         <Typography.Text style={{ paddingRight: 8 }}>
                           PureFi Package
                         </Typography.Text>
@@ -1998,7 +1998,7 @@ const Playground: FC = () => {
                 <Form layout="vertical" autoComplete="off">
                   <Form.Item>
                     <Flex vertical gap="8px">
-                      <div ref={ref4}>
+                      <div>
                         <Flex gap="8px" style={{ paddingBottom: 8 }}>
                           <Typography.Text style={{ paddingRight: 8 }}>
                             PureFi Package
@@ -2096,7 +2096,7 @@ const Playground: FC = () => {
       </Modal>
 
       <Modal
-        title="Signature (EIP-712) Patner's Backend"
+        title="Signature (EIP-712) Partner's Backend"
         open={isPartnersBackendModalOpen}
         onCancel={closePartnersBackendModalHandler}
         footer={null}
