@@ -1752,7 +1752,7 @@ const Playground: FC = () => {
                       loading={verificationLoading}
                       block
                     >
-                      Verify
+                      Send
                     </Button>
                   </Form.Item>
                 </Form>
