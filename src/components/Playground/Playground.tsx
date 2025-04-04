@@ -33,15 +33,18 @@ import {
 
 import {
   BaseError,
+  createPublicClient,
   createWalletClient,
   custom,
+  http,
   parseUnits,
+  TransactionReceipt,
   zeroAddress,
 } from 'viem';
 
 import { useAccount } from 'wagmi';
 
-import { checkIfChainSupported, sleep } from '@/utils';
+import { checkIfChainSupported, getTransactionLink, sleep } from '@/utils';
 import { useMediaQuery } from 'react-responsive';
 import {
   ExportOutlined,
@@ -54,6 +57,8 @@ import styles from './Playground.module.scss';
 import { ConnectButton } from '../ConnectButton';
 import { Link } from 'react-router-dom';
 import { PUREFI_DEMO_CONTRACT_ABI } from '@/abi';
+import { toast } from 'react-toastify';
+import { DEFAULT_CHAIN_VIEM } from '@/config';
 
 enum PresetTypeEnum {
   CUSTOM = 0,
@@ -241,6 +246,7 @@ const Playground: FC = () => {
   const ref2 = useRef(null);
   const ref3 = useRef(null);
   const ref4 = useRef(null);
+  const ref5 = useRef(null);
 
   const [isTourOpen, setIsTourOpen] = useState<boolean>(false);
 
@@ -273,6 +279,12 @@ const Playground: FC = () => {
       description:
         'In case of successfull verification, PureFi Issuer responds with PureFi Package that can be used as a payload for the following Smart Contract call',
       target: () => ref4.current,
+    },
+    {
+      title: 'Smart Contract',
+      description:
+        'You can make a call of the PureFi Demo contract with appropriate PureFi Package. For demo purposes for PureFi KYC preset on Sepolia only',
+      target: () => ref5.current,
     },
   ];
 
@@ -318,6 +330,11 @@ const Playground: FC = () => {
   const isChainSupported = checkIfChainSupported(account.chainId);
   const isReady = isWalletConnected && isChainSupported;
 
+  const publicClientConfig = {
+    chain: isReady ? account.chain : DEFAULT_CHAIN_VIEM,
+    transport: isReady ? custom((window as any).ethereum!) : http(),
+  };
+
   const [partnersFrontendError, setPartnersFrontendError] = useState<
     string | null
   >(null);
@@ -326,6 +343,13 @@ const Playground: FC = () => {
   >(null);
   const [purefiError, setPurefiError] = useState<string | null>(null);
 
+  const [smartContractError, setSmartContractError] = useState<string | null>(
+    null
+  );
+
+  const [txnReceipt, setTxnReceipt] = useState<TransactionReceipt | null>(null);
+  const [txnHash, setTxnHash] = useState<string | null>(null);
+
   const [isVerificationAllowed, setIsVerificationAllowed] = useState(false);
 
   const [isPartnersFrontendModalOpen, setIsPartnersFrontendModalOpen] =
@@ -333,6 +357,8 @@ const Playground: FC = () => {
   const [isPartnersBackendModalOpen, setIsPartnersBackendModalOpen] =
     useState(false);
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
+  const [isSmartContractModalOpen, setIsSmartContractModalOpen] =
+    useState(false);
 
   const [purefiPayload, setPurefiPayload] =
     useState<PureFIRuleV5Payload | null>(null);
@@ -346,6 +372,7 @@ const Playground: FC = () => {
   const [partnersFrontendLoading, setPartnersFrontendLoading] = useState(false);
   const [partnersBackendLoading, setPartnersBackendLoading] = useState(false);
   const [verificationLoading, setVerificationLoading] = useState(false);
+  const [smartContractLoading, setSmartContractLoading] = useState(false);
 
   useEffect(() => {
     if (presetType === PresetTypeEnum.PUREFI_AML) {
@@ -445,11 +472,11 @@ const Playground: FC = () => {
     }
   };
 
-  const openPartnersBackendModalOpen = () => {
+  const openPartnersBackendModalHandler = () => {
     setIsPartnersBackendModalOpen(true);
   };
 
-  const closePartnersBackendModalOpen = () => {
+  const closePartnersBackendModalHandler = () => {
     if (!partnersBackendLoading) {
       setIsPartnersBackendModalOpen(false);
       setPartnersBackendError(null);
@@ -465,6 +492,19 @@ const Playground: FC = () => {
       setIsVerificationModalOpen(false);
       setIsVerificationAllowed(false);
       setPurefiError(null);
+    }
+  };
+
+  const openSmartContractModalHandler = () => {
+    setIsSmartContractModalOpen(true);
+  };
+
+  const closeSmartContractModalHandler = () => {
+    if (!smartContractLoading) {
+      setIsSmartContractModalOpen(false);
+      setSmartContractError(null);
+      setTxnReceipt(null);
+      setTxnHash(null);
     }
   };
 
@@ -621,6 +661,15 @@ const Playground: FC = () => {
   const validateAll = async () => {
     const isPayloadReady = await validatePayload();
     const isAccountReady = await validateAccount();
+
+    if (!isPayloadReady) {
+      toast.warn('Payload is not configured properly');
+    }
+
+    if (!isAccountReady) {
+      toast.warn('Either wallet not connected or chain is not supported');
+    }
+
     return isPayloadReady && isAccountReady;
   };
 
@@ -674,7 +723,7 @@ const Playground: FC = () => {
       try {
         setPartnersBackendLoading(true);
 
-        openPartnersBackendModalOpen();
+        openPartnersBackendModalHandler();
 
         await sleep(1000);
 
@@ -744,27 +793,59 @@ const Playground: FC = () => {
       } finally {
         setVerificationLoading(false);
       }
+    } else {
+      toast.warn(
+        'Prepare PureFi Message and corresponding EIP-712 Signature on the previous step'
+      );
     }
   };
 
   const smartContractCallHandler = async () => {
     try {
       if (isReady && purefiPackage) {
-        const walletClient = createWalletClient({
-          chain: account.chain!,
-          transport: custom((window as any).ethereum!),
-        });
+        if (presetType === PresetTypeEnum.PUREFI_KYC) {
+          try {
+            setSmartContractLoading(true);
 
-        const data = await walletClient.writeContract({
-          account: account.address!,
-          address: PUREFI_DEMO_CONTRACT,
-          abi: PUREFI_DEMO_CONTRACT_ABI,
-          functionName: 'buyForWithKYCPurefi1',
-          args: [account.address!, purefiPackage as `0x${string}`],
-          value: parseUnits('0.0001', 18),
-        });
+            openSmartContractModalHandler();
 
-        console.log(data);
+            const walletClient = createWalletClient({
+              chain: account.chain!,
+              transport: custom((window as any).ethereum!),
+            });
+
+            const hash = await walletClient.writeContract({
+              account: account.address!,
+              address: PUREFI_DEMO_CONTRACT,
+              abi: PUREFI_DEMO_CONTRACT_ABI,
+              functionName: 'buyForWithKYCPurefi1',
+              args: [account.address!, purefiPackage as `0x${string}`],
+              value: parseUnits('0.0001', 18),
+            });
+
+            setTxnHash(hash);
+
+            const publicClient = createPublicClient(publicClientConfig);
+
+            const receipt = await publicClient.waitForTransactionReceipt({
+              hash,
+            });
+
+            setTxnReceipt(receipt);
+          } catch (error: unknown) {
+            const theError = error as BaseError;
+            setTxnReceipt(null);
+            setSmartContractError(theError.shortMessage);
+          } finally {
+            setSmartContractLoading(false);
+          }
+        } else {
+          toast.info(
+            'Smart contract call is available for PureFi KYC preset on Sepolia'
+          );
+        }
+      } else {
+        toast.warn('Obtain PureFi Package on the previous step');
       }
     } catch (error: unknown) {
       console.log(error);
@@ -925,6 +1006,18 @@ const Playground: FC = () => {
     </Row>
   );
 
+  const smartContractTitle = (
+    <Flex gap="small" align="center">
+      <h3>4. Smart Contract</h3>
+      <Link
+        target="_blank"
+        rel="noopener norefferer"
+        to="https://sepolia.etherscan.io/address/0x51109084a9FAD602c622aF60728cdB6dA9266fD7#writeProxyContract#F1"
+      >
+        <span>Sepolia Etherscan</span> <ExportOutlined />
+      </Link>
+    </Flex>
+  );
   const resetPayloadFormHandler = () => {
     setPresetType(PresetTypeEnum.CUSTOM);
     payloadForm.resetFields();
@@ -943,6 +1036,10 @@ const Playground: FC = () => {
         : DASHBOARD_URL_PROD;
     const specificDashboardUrl = `${dashboardUrl}/kyc`;
     window.open(specificDashboardUrl, '_blank');
+  };
+
+  const openTxnLink = (link: string) => {
+    window.open(link, '_blank');
   };
 
   return (
@@ -1895,15 +1992,48 @@ const Playground: FC = () => {
             </Row>
           </Card>
 
-          {presetType === PresetTypeEnum.PUREFI_KYC && (
-            <Card title={<h3>4. Smart Contract</h3>} size="small">
-              <Row gutter={[16, 8]}>
-                <Col className="gutter-row" xs={24} lg={12}>
-                  <Button onClick={smartContractCallHandler}>Call</Button>
-                </Col>
-              </Row>
-            </Card>
-          )}
+          <Card title={smartContractTitle} size="small" ref={ref5}>
+            <Row gutter={[16, 8]}>
+              <Col className="gutter-row" xs={24} lg={12}>
+                <Form layout="vertical" autoComplete="off">
+                  <Form.Item>
+                    <Flex vertical gap="8px">
+                      <div ref={ref4}>
+                        <Flex gap="8px" style={{ paddingBottom: 8 }}>
+                          <Typography.Text style={{ paddingRight: 8 }}>
+                            PureFi Package
+                          </Typography.Text>
+                        </Flex>
+                        <div className={styles.playground__payload}>
+                          <pre>{purefiPackage ?? ''}</pre>
+
+                          {!!(purefiPackage ?? '') ? (
+                            <Typography.Text
+                              className={styles.playground__copy}
+                              copyable={{
+                                text: purefiPackage ?? '',
+                              }}
+                            />
+                          ) : null}
+                        </div>
+                      </div>
+                    </Flex>
+                  </Form.Item>
+                </Form>
+
+                <Form.Item>
+                  <Button
+                    type="primary"
+                    onClick={smartContractCallHandler}
+                    loading={smartContractLoading}
+                    block
+                  >
+                    Call
+                  </Button>
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
         </Space>
       )}
 
@@ -1920,16 +2050,12 @@ const Playground: FC = () => {
       >
         <Flex align="center" gap="20px" vertical style={{ marginTop: 40 }}>
           {partnersFrontendLoading && (
-            <>
-              {partnersFrontendError == null && (
-                <Flex align="center" gap="20px" vertical>
-                  <LoadingOutlined style={{ fontSize: 40 }} />
-                  <Typography.Text type="secondary">
-                    Proceed in your wallet
-                  </Typography.Text>
-                </Flex>
-              )}
-            </>
+            <Flex align="center" gap="20px" vertical>
+              <LoadingOutlined style={{ fontSize: 40 }} />
+              <Typography.Text type="secondary">
+                Proceed in your wallet
+              </Typography.Text>
+            </Flex>
           )}
           {!partnersFrontendLoading && (
             <>
@@ -1972,7 +2098,7 @@ const Playground: FC = () => {
       <Modal
         title="Signature (EIP-712) Patner's Backend"
         open={isPartnersBackendModalOpen}
-        onCancel={closePartnersBackendModalOpen}
+        onCancel={closePartnersBackendModalHandler}
         footer={null}
         maskClosable={false}
         destroyOnClose
@@ -2001,7 +2127,7 @@ const Playground: FC = () => {
                   extra={[
                     <Button
                       type="primary"
-                      onClick={closePartnersBackendModalOpen}
+                      onClick={closePartnersBackendModalHandler}
                       block
                     >
                       OK
@@ -2016,7 +2142,7 @@ const Playground: FC = () => {
                   extra={[
                     <Button
                       type="primary"
-                      onClick={closePartnersBackendModalOpen}
+                      onClick={closePartnersBackendModalHandler}
                       block
                     >
                       OK
@@ -2103,6 +2229,99 @@ const Playground: FC = () => {
                     ]}
                   />
                 </div>
+              )}
+            </>
+          )}
+        </Flex>
+      </Modal>
+
+      <Modal
+        title="Smart Contract"
+        open={isSmartContractModalOpen}
+        onCancel={closeSmartContractModalHandler}
+        footer={null}
+        maskClosable={false}
+        destroyOnClose
+        centered
+      >
+        <Flex align="center" gap="20px" vertical style={{ marginTop: 40 }}>
+          {smartContractLoading && (
+            <>
+              {!txnHash ? (
+                <Flex align="center" gap="20px" vertical>
+                  <LoadingOutlined style={{ fontSize: 40 }} />
+                  <Typography.Text type="secondary">
+                    Proceed in your wallet
+                  </Typography.Text>
+                </Flex>
+              ) : (
+                <Flex align="center" gap="20px" vertical>
+                  <LoadingOutlined style={{ fontSize: 40 }} />
+                  <Typography.Text type="secondary">Pending...</Typography.Text>
+                </Flex>
+              )}
+            </>
+          )}
+
+          {!smartContractLoading && (
+            <>
+              {smartContractError !== null ? (
+                <Result
+                  status="error"
+                  title="Error!"
+                  subTitle={smartContractError}
+                  extra={[
+                    !!txnHash && (
+                      <Button
+                        style={{ marginBottom: 10 }}
+                        type="link"
+                        icon={<ExportOutlined />}
+                        onClick={() =>
+                          openTxnLink(
+                            getTransactionLink(txnHash!, account.chain)
+                          )
+                        }
+                      >
+                        <span>TXN</span>
+                      </Button>
+                    ),
+                    <Button
+                      type="primary"
+                      onClick={closeSmartContractModalHandler}
+                      block
+                    >
+                      OK
+                    </Button>,
+                  ]}
+                />
+              ) : (
+                <Result
+                  status={
+                    txnReceipt?.status === 'success' ? 'success' : 'error'
+                  }
+                  title={
+                    txnReceipt?.status === 'success' ? 'Success!' : 'Error!'
+                  }
+                  extra={[
+                    <Button
+                      style={{ marginBottom: 10 }}
+                      type="link"
+                      icon={<ExportOutlined />}
+                      onClick={() =>
+                        openTxnLink(getTransactionLink(txnHash!, account.chain))
+                      }
+                    >
+                      <span>TXN</span>
+                    </Button>,
+                    <Button
+                      type="primary"
+                      onClick={closeSmartContractModalHandler}
+                      block
+                    >
+                      OK
+                    </Button>,
+                  ]}
+                />
               )}
             </>
           )}
