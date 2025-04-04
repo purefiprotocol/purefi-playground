@@ -26,6 +26,9 @@ const Navbar: FC = () => {
     setIsDrawerOpen(false);
   };
 
+  const DASHBOARD_URL_STAGE = import.meta.env.VITE_DASHBOARD_URL_STAGE;
+  const DASHBOARD_URL_PROD = import.meta.env.VITE_DASHBOARD_URL_PROD;
+
   return (
     <>
       <Layout.Header className={styles.header}>
@@ -63,6 +66,32 @@ const Navbar: FC = () => {
                     </Flex>
                   </a>
                 </div>
+                <div className={styles.nav__item}>
+                  <a
+                    className={styles.nav__link}
+                    href={DASHBOARD_URL_STAGE}
+                    rel="noopener norefferer"
+                    target="_blank"
+                  >
+                    <Flex gap={8} align="center">
+                      <span>Stage Dashboard</span>
+                      <ExportOutlined />
+                    </Flex>
+                  </a>
+                </div>
+                <div className={styles.nav__item}>
+                  <a
+                    className={styles.nav__link}
+                    href={DASHBOARD_URL_PROD}
+                    rel="noopener norefferer"
+                    target="_blank"
+                  >
+                    <Flex gap={8} align="center">
+                      <span>Prod Dashboard</span>
+                      <ExportOutlined />
+                    </Flex>
+                  </a>
+                </div>
               </>
             )}
           </Flex>
@@ -94,6 +123,32 @@ const Navbar: FC = () => {
             >
               <Flex gap={8} align="center">
                 <span>Docs</span>
+                <ExportOutlined />
+              </Flex>
+            </a>
+          </div>
+          <div className={styles.nav__item}>
+            <a
+              className={styles.nav__link}
+              href={DASHBOARD_URL_STAGE}
+              rel="noopener norefferer"
+              target="_blank"
+            >
+              <Flex gap={8} align="center">
+                <span>Stage Dashboard</span>
+                <ExportOutlined />
+              </Flex>
+            </a>
+          </div>
+          <div className={styles.nav__item}>
+            <a
+              className={styles.nav__link}
+              href={DASHBOARD_URL_PROD}
+              rel="noopener norefferer"
+              target="_blank"
+            >
+              <Flex gap={8} align="center">
+                <span>Prod Dashboard</span>
                 <ExportOutlined />
               </Flex>
             </a>
