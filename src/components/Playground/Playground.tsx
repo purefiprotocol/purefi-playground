@@ -102,7 +102,7 @@ interface DepositFormFields {
 }
 
 interface WithdrawFormFields {
-  assets?: string;
+  shares?: string;
   receiver?: string;
   owner?: string;
   purefidata?: string;
@@ -696,12 +696,12 @@ const Playground: FC = () => {
 
   const [withdrawForm] = Form.useForm();
 
-  const withdrawAssetsValue = Form.useWatch('assets', withdrawForm);
+  const withdrawSharesValue = Form.useWatch('shares', withdrawForm);
   const withdrawReceiverValue = Form.useWatch('receiver', withdrawForm);
   const withdrawOwnerValue = Form.useWatch('owner', withdrawForm);
   const withdrawPurefidataValue = Form.useWatch('purefidata', withdrawForm);
 
-  const withdrawAssetsErrors = withdrawForm.getFieldError('assets');
+  const withdrawSharesErrors = withdrawForm.getFieldError('shares');
   const withdrawReceiverErrors = withdrawForm.getFieldError('receiver');
   const withdrawOwnerErrors = withdrawForm.getFieldError('owner');
   const withdrawPurefidataErrors = withdrawForm.getFieldError('purefidata');
@@ -1060,7 +1060,7 @@ const Playground: FC = () => {
       await withdrawForm.validateFields({ recursive: true });
 
       const isWithdrawReady = [
-        withdrawAssetsErrors,
+        withdrawSharesErrors,
         withdrawReceiverErrors,
         withdrawOwnerErrors,
         withdrawPurefidataErrors,
@@ -1114,7 +1114,7 @@ const Playground: FC = () => {
               abi: PUREFI_DEMO_CONTRACT_ABI,
               functionName: 'withdraw',
               args: [
-                BigInt(withdrawAssetsValue),
+                BigInt(withdrawSharesValue),
                 withdrawReceiverValue,
                 withdrawOwnerValue,
                 withdrawPurefidataValue as `0x${string}`,
@@ -1505,7 +1505,7 @@ const Playground: FC = () => {
             <Form
               layout="vertical"
               initialValues={{
-                assets: '',
+                shares: '',
                 receiver: account?.address || '',
                 owner: account?.address || '',
                 purefidata: purefiPackage ?? '',
@@ -1515,8 +1515,8 @@ const Playground: FC = () => {
               autoComplete="off"
             >
               <Form.Item
-                label="assets (uint256)"
-                name="assets"
+                label="shares (uint256)"
+                name="shares"
                 required
                 rules={[
                   {
