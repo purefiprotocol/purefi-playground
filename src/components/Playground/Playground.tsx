@@ -1,4 +1,6 @@
 import { FC, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   PureFI,
   PureFIError,
@@ -14,8 +16,6 @@ import {
   Button,
   Card,
   Col,
-  Collapse,
-  CollapseProps,
   Flex,
   Form,
   Input,
@@ -35,18 +35,16 @@ import {
 
 import {
   BaseError,
-  createPublicClient,
   createWalletClient,
   custom,
   http,
   parseUnits,
-  TransactionReceipt,
   zeroAddress,
 } from 'viem';
 
 import { useAccount } from 'wagmi';
 
-import { checkIfChainSupported, getTransactionLink, sleep } from '@/utils';
+import { checkIfChainSupported, sleep } from '@/utils';
 import { useMediaQuery } from 'react-responsive';
 import {
   ExportOutlined,
@@ -55,12 +53,10 @@ import {
   LoadingOutlined,
 } from '@ant-design/icons';
 
-import styles from './Playground.module.scss';
 import { ConnectButton } from '../ConnectButton';
-import { Link } from 'react-router-dom';
-import { PUREFI_DEMO_CONTRACT_ABI } from '@/abi';
-import { toast } from 'react-toastify';
-import { DEFAULT_CHAIN_VIEM } from '@/config';
+import { TransactionBuilder } from '../TransactionBuilder';
+
+import styles from './Playground.module.scss';
 
 enum PresetTypeEnum {
   CUSTOM = 0,
@@ -89,27 +85,6 @@ interface PayloadFields {
   tokenPaymentAddress?: string;
   tokenPaymentValue?: string;
   tokenPaymentDecimals?: number;
-}
-
-interface SmartContractFormFields {
-  smartContractAddress?: string;
-}
-
-interface DepositFormFields {
-  assets?: string;
-  receiver?: string;
-  purefidata?: string;
-}
-
-interface WithdrawFormFields {
-  shares?: string;
-  receiver?: string;
-  owner?: string;
-  purefidata?: string;
-}
-
-interface WhitelistFormFields {
-  purefidata?: string;
 }
 
 interface SignatureProcessFields {
@@ -304,9 +279,9 @@ const Playground: FC = () => {
       target: () => ref4.current,
     },
     {
-      title: 'Smart Contract',
+      title: 'Step 4. Transaction Builder',
       description:
-        'You can make a call of the PureFi Demo contract with appropriate PureFi Package. For demo purposes for PureFi KYC preset on Sepolia only',
+        'You can build a transaction. Just provide a contract address, corresponding ABI and pass appropiate arguments to the method you are going to call',
       target: () => ref5.current,
     },
   ];
@@ -324,36 +299,6 @@ const Playground: FC = () => {
       {
         name: 'fromAddress',
         value: account.address || '',
-      },
-    ]);
-    depositForm.setFields([
-      {
-        name: 'receiver',
-        value: account.address || '',
-      },
-      {
-        name: 'purefidata',
-        value: purefiPackage ?? '',
-      },
-    ]);
-    withdrawForm.setFields([
-      {
-        name: 'receiver',
-        value: account.address || '',
-      },
-      {
-        name: 'owner',
-        value: account.address || '',
-      },
-      {
-        name: 'purefidata',
-        value: purefiPackage ?? '',
-      },
-    ]);
-    whitelistForm.setFields([
-      {
-        name: 'purefidata',
-        value: purefiPackage ?? '',
       },
     ]);
     setPurefiPayload(null);
@@ -383,11 +328,6 @@ const Playground: FC = () => {
   const isChainSupported = checkIfChainSupported(account.chainId);
   const isReady = isWalletConnected && isChainSupported;
 
-  const publicClientConfig = {
-    chain: isReady ? account.chain : DEFAULT_CHAIN_VIEM,
-    transport: isReady ? custom((window as any).ethereum!) : http(),
-  };
-
   const [partnersFrontendError, setPartnersFrontendError] = useState<
     string | null
   >(null);
@@ -396,13 +336,6 @@ const Playground: FC = () => {
   >(null);
   const [purefiError, setPurefiError] = useState<string | null>(null);
 
-  const [smartContractError, setSmartContractError] = useState<string | null>(
-    null
-  );
-
-  const [txnReceipt, setTxnReceipt] = useState<TransactionReceipt | null>(null);
-  const [txnHash, setTxnHash] = useState<string | null>(null);
-
   const [isVerificationAllowed, setIsVerificationAllowed] = useState(false);
 
   const [isPartnersFrontendModalOpen, setIsPartnersFrontendModalOpen] =
@@ -410,8 +343,6 @@ const Playground: FC = () => {
   const [isPartnersBackendModalOpen, setIsPartnersBackendModalOpen] =
     useState(false);
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
-  const [isSmartContractModalOpen, setIsSmartContractModalOpen] =
-    useState(false);
 
   const [purefiPayload, setPurefiPayload] =
     useState<PureFIRuleV5Payload | null>(null);
@@ -425,7 +356,6 @@ const Playground: FC = () => {
   const [partnersFrontendLoading, setPartnersFrontendLoading] = useState(false);
   const [partnersBackendLoading, setPartnersBackendLoading] = useState(false);
   const [verificationLoading, setVerificationLoading] = useState(false);
-  const [smartContractLoading, setSmartContractLoading] = useState(false);
 
   useEffect(() => {
     if (presetType === PresetTypeEnum.PUREFI_AML) {
@@ -514,39 +444,6 @@ const Playground: FC = () => {
     setPurefiPackage(null);
   }, [isFrontendImplementation]);
 
-  useEffect(() => {
-    depositForm.setFields([
-      {
-        name: 'purefidata',
-        value: purefiPackage ?? '',
-      },
-    ]);
-    withdrawForm.setFields([
-      {
-        name: 'purefidata',
-        value: purefiPackage ?? '',
-      },
-    ]);
-    whitelistForm.setFields([
-      {
-        name: 'purefidata',
-        value: purefiPackage ?? '',
-      },
-    ]);
-
-    if (purefiPackage) {
-      depositForm.validateFields({
-        recursive: true,
-      });
-      withdrawForm.validateFields({
-        recursive: true,
-      });
-      whitelistForm.validateFields({
-        recursive: true,
-      });
-    }
-  }, [purefiPackage]);
-
   const openPartnersFrontendModalHandler = () => {
     setIsPartnersFrontendModalOpen(true);
   };
@@ -578,19 +475,6 @@ const Playground: FC = () => {
       setIsVerificationModalOpen(false);
       setIsVerificationAllowed(false);
       setPurefiError(null);
-    }
-  };
-
-  const openSmartContractModalHandler = () => {
-    setIsSmartContractModalOpen(true);
-  };
-
-  const closeSmartContractModalHandler = () => {
-    if (!smartContractLoading) {
-      setIsSmartContractModalOpen(false);
-      setSmartContractError(null);
-      setTxnReceipt(null);
-      setTxnHash(null);
     }
   };
 
@@ -647,76 +531,9 @@ const Playground: FC = () => {
     'tokenPaymentDecimals'
   );
 
-  useEffect(() => {
-    smartContractForm.setFields([
-      {
-        name: 'smartContractAddress',
-        value: toAddressValue || '',
-      },
-    ]);
-    if (toAddressValue) {
-      smartContractForm.validateFields({
-        recursive: true,
-      });
-    }
-  }, [toAddressValue]);
-
   const payloadFormChangeHandler = (fields: PayloadFields) => {
     setPurefiPayload(null);
     setPurefiPackage(null);
-  };
-
-  const [smartContractForm] = Form.useForm();
-
-  const smartContractAddressValue = Form.useWatch(
-    'smartContractAddress',
-    smartContractForm
-  );
-  const smartContractAddressErrors = smartContractForm.getFieldError(
-    'smartContractAddress'
-  );
-
-  const smartContractFormChangeHandler = (fields: SmartContractFormFields) => {
-    console.log('smartContractForm', fields);
-  };
-
-  const [depositForm] = Form.useForm();
-
-  const depositAssetsValue = Form.useWatch('assets', depositForm);
-  const depositReceiverValue = Form.useWatch('receiver', depositForm);
-  const depositPurefidataValue = Form.useWatch('purefidata', depositForm);
-
-  const depositAssetsErrors = depositForm.getFieldError('assets');
-  const depositReceiverErrors = depositForm.getFieldError('receiver');
-  const depositPurefidataErrors = depositForm.getFieldError('purefidata');
-
-  const depositFormChangeHandler = (fields: DepositFormFields) => {
-    console.log('depositForm', fields);
-  };
-
-  const [withdrawForm] = Form.useForm();
-
-  const withdrawSharesValue = Form.useWatch('shares', withdrawForm);
-  const withdrawReceiverValue = Form.useWatch('receiver', withdrawForm);
-  const withdrawOwnerValue = Form.useWatch('owner', withdrawForm);
-  const withdrawPurefidataValue = Form.useWatch('purefidata', withdrawForm);
-
-  const withdrawSharesErrors = withdrawForm.getFieldError('shares');
-  const withdrawReceiverErrors = withdrawForm.getFieldError('receiver');
-  const withdrawOwnerErrors = withdrawForm.getFieldError('owner');
-  const withdrawPurefidataErrors = withdrawForm.getFieldError('purefidata');
-
-  const withdrawFormChangeHandler = (fields: WithdrawFormFields) => {
-    console.log('withdrawForm', fields);
-  };
-
-  const [whitelistForm] = Form.useForm();
-
-  const whitelistPurefidataValue = Form.useWatch('purefidata', whitelistForm);
-  const whitelistPurefidataErrors = whitelistForm.getFieldError('purefidata');
-
-  const whitelistFormChangeHandler = (fields: WhitelistFormFields) => {
-    console.log('whitelistForm', fields);
   };
 
   const [signatureProcessForm] = Form.useForm();
@@ -953,280 +770,6 @@ const Playground: FC = () => {
     }
   };
 
-  const validateSmartContractForm = async () => {
-    try {
-      await smartContractForm.validateFields({ recursive: true });
-
-      const isSmartContractReady = [smartContractAddressErrors].every(
-        (item) => item.length === 0
-      );
-
-      return isSmartContractReady;
-    } catch {
-      return false;
-    }
-  };
-
-  const validateDepositForm = async () => {
-    try {
-      await depositForm.validateFields({ recursive: true });
-
-      const isDepositReady = [
-        depositAssetsErrors,
-        depositReceiverErrors,
-        depositPurefidataErrors,
-      ].every((item) => item.length === 0);
-
-      return isDepositReady;
-    } catch {
-      return false;
-    }
-  };
-
-  const validateDeposit = async () => {
-    const isSmartContractFormReady = await validateSmartContractForm();
-    const isDepositFormReady = await validateDepositForm();
-    const isAccountReady = await validateAccount();
-
-    if (!isSmartContractFormReady) {
-      toast.warn('Smart Contract Address is mandatory');
-    } else if (!isDepositFormReady) {
-      if (!depositPurefidataValue) {
-        toast.warn('Obtain PureFi Package on the previous step');
-      } else {
-        toast.warn('Deposit payload is not configured properly');
-      }
-    } else if (!isAccountReady) {
-      toast.warn('Either wallet not connected or chain is not supported');
-    }
-
-    return isSmartContractFormReady && isDepositFormReady && isAccountReady;
-  };
-
-  const depositHandler = async () => {
-    try {
-      if (isReady) {
-        const isValid = await validateDeposit();
-
-        if (isValid) {
-          try {
-            setSmartContractLoading(true);
-
-            openSmartContractModalHandler();
-
-            const walletClient = createWalletClient({
-              chain: account.chain!,
-              transport: custom((window as any).ethereum!),
-            });
-
-            const hash = await walletClient.writeContract({
-              account: account.address!,
-              address: smartContractAddressValue,
-              abi: PUREFI_DEMO_CONTRACT_ABI,
-              functionName: 'deposit',
-              args: [
-                BigInt(depositAssetsValue),
-                depositReceiverValue,
-                depositPurefidataValue as `0x${string}`,
-              ],
-            });
-
-            setTxnHash(hash);
-            setPurefiPackage(null);
-
-            const publicClient = createPublicClient(publicClientConfig);
-
-            const receipt = await publicClient.waitForTransactionReceipt({
-              hash,
-            });
-
-            setTxnReceipt(receipt);
-          } catch (error: unknown) {
-            const theError = error as BaseError;
-            setTxnReceipt(null);
-            setSmartContractError(theError.shortMessage);
-          } finally {
-            setSmartContractLoading(false);
-          }
-        }
-      }
-    } catch (error: unknown) {
-      console.log(error);
-    }
-  };
-
-  const validateWithdrawForm = async () => {
-    try {
-      await withdrawForm.validateFields({ recursive: true });
-
-      const isWithdrawReady = [
-        withdrawSharesErrors,
-        withdrawReceiverErrors,
-        withdrawOwnerErrors,
-        withdrawPurefidataErrors,
-      ].every((item) => item.length === 0);
-
-      return isWithdrawReady;
-    } catch {
-      return false;
-    }
-  };
-
-  const validateWithdraw = async () => {
-    const isSmartContractFormReady = await validateSmartContractForm();
-    const isWithdrawFormReady = await validateWithdrawForm();
-    const isAccountReady = await validateAccount();
-
-    if (!isSmartContractFormReady) {
-      toast.warn('Smart Contract Address is mandatory');
-    } else if (!isWithdrawFormReady) {
-      if (!withdrawPurefidataValue) {
-        toast.warn('Obtain PureFi Package on the previous step');
-      } else {
-        toast.warn('Withdraw payload is not configured properly');
-      }
-    } else if (!isAccountReady) {
-      toast.warn('Either wallet not connected or chain is not supported');
-    }
-
-    return isSmartContractFormReady && isWithdrawFormReady && isAccountReady;
-  };
-
-  const withdrawHandler = async () => {
-    try {
-      if (isReady) {
-        const isValid = await validateWithdraw();
-
-        if (isValid) {
-          try {
-            setSmartContractLoading(true);
-
-            openSmartContractModalHandler();
-
-            const walletClient = createWalletClient({
-              chain: account.chain!,
-              transport: custom((window as any).ethereum!),
-            });
-
-            const hash = await walletClient.writeContract({
-              account: account.address!,
-              address: smartContractAddressValue,
-              abi: PUREFI_DEMO_CONTRACT_ABI,
-              functionName: 'withdraw',
-              args: [
-                BigInt(withdrawSharesValue),
-                withdrawReceiverValue,
-                withdrawOwnerValue,
-                withdrawPurefidataValue as `0x${string}`,
-              ],
-            });
-
-            setTxnHash(hash);
-            setPurefiPackage(null);
-
-            const publicClient = createPublicClient(publicClientConfig);
-
-            const receipt = await publicClient.waitForTransactionReceipt({
-              hash,
-            });
-
-            setTxnReceipt(receipt);
-          } catch (error: unknown) {
-            const theError = error as BaseError;
-            setTxnReceipt(null);
-            setSmartContractError(theError.shortMessage);
-          } finally {
-            setSmartContractLoading(false);
-          }
-        }
-      }
-    } catch (error: unknown) {
-      console.log(error);
-    }
-  };
-
-  const validateWhitelistForm = async () => {
-    try {
-      await whitelistForm.validateFields({ recursive: true });
-
-      const isWhitelistReady = [whitelistPurefidataErrors].every(
-        (item) => item.length === 0
-      );
-
-      return isWhitelistReady;
-    } catch {
-      return false;
-    }
-  };
-
-  const validateWhitelist = async () => {
-    const isSmartContractFormReady = await validateSmartContractForm();
-    const isWhitelistFormReady = await validateWhitelistForm();
-    const isAccountReady = await validateAccount();
-
-    if (!isSmartContractFormReady) {
-      toast.warn('Smart Contract Address is mandatory');
-    } else if (!isWhitelistFormReady) {
-      if (!whitelistPurefidataValue) {
-        toast.warn('Obtain PureFi Package on the previous step');
-      } else {
-        toast.warn('Whitelist payload is not configured properly');
-      }
-    } else if (!isAccountReady) {
-      toast.warn('Either wallet not connected or chain is not supported');
-    }
-
-    return isSmartContractFormReady && isWhitelistFormReady && isAccountReady;
-  };
-
-  const whitelistHandler = async () => {
-    try {
-      if (isReady) {
-        const isValid = await validateWhitelist();
-
-        if (isValid) {
-          try {
-            setSmartContractLoading(true);
-
-            openSmartContractModalHandler();
-
-            const walletClient = createWalletClient({
-              chain: account.chain!,
-              transport: custom((window as any).ethereum!),
-            });
-
-            const hash = await walletClient.writeContract({
-              account: account.address!,
-              address: smartContractAddressValue,
-              abi: PUREFI_DEMO_CONTRACT_ABI,
-              functionName: 'whitelist',
-              args: [whitelistPurefidataValue as `0x${string}`],
-            });
-
-            setTxnHash(hash);
-            setPurefiPackage(null);
-
-            const publicClient = createPublicClient(publicClientConfig);
-
-            const receipt = await publicClient.waitForTransactionReceipt({
-              hash,
-            });
-
-            setTxnReceipt(receipt);
-          } catch (error: unknown) {
-            const theError = error as BaseError;
-            setTxnReceipt(null);
-            setSmartContractError(theError.shortMessage);
-          } finally {
-            setSmartContractLoading(false);
-          }
-        }
-      }
-    } catch (error: unknown) {
-      console.log(error);
-    }
-  };
-
   const isPayloadReadonly = presetType !== PresetTypeEnum.CUSTOM;
 
   const isIntermediaryHidden = ['0', '32', '48', '64', '96', '112'].includes(
@@ -1381,18 +924,6 @@ const Playground: FC = () => {
     </Row>
   );
 
-  const smartContractTitle = (
-    <Flex gap="small" align="center">
-      <h3>4. Smart Contract</h3>
-      {/* <Link
-        target="_blank"
-        rel="noopener norefferer"
-        to="https://sepolia.etherscan.io/address/0x51109084a9FAD602c622aF60728cdB6dA9266fD7#writeProxyContract#F1"
-      >
-        <span>Sepolia Etherscan</span> <ExportOutlined />
-      </Link> */}
-    </Flex>
-  );
   const resetPayloadFormHandler = () => {
     setPresetType(PresetTypeEnum.CUSTOM);
     payloadForm.resetFields();
@@ -1412,229 +943,6 @@ const Playground: FC = () => {
     const specificDashboardUrl = `${dashboardUrl}/kyc`;
     window.open(specificDashboardUrl, '_blank');
   };
-
-  const openTxnLink = (link: string) => {
-    window.open(link, '_blank');
-  };
-
-  const depositItems: CollapseProps['items'] = [
-    {
-      key: '1',
-      label: '1. deposit',
-      children: (
-        <Row gutter={[16, 8]}>
-          <Col className="gutter-row" xs={24}>
-            <Form
-              layout="vertical"
-              initialValues={{
-                assets: '',
-                receiver: account?.address || '',
-                purefidata: purefiPackage ?? '',
-              }}
-              form={depositForm}
-              onValuesChange={depositFormChangeHandler}
-              autoComplete="off"
-            >
-              <Form.Item
-                label="assets (uint256)"
-                name="assets"
-                required
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-                hasFeedback
-              >
-                <Input />
-              </Form.Item>
-
-              <Form.Item
-                label="receiver (address)"
-                name="receiver"
-                required
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-                hasFeedback
-              >
-                <Input />
-              </Form.Item>
-
-              <Form.Item
-                label="_purefidata (bytes)"
-                name="purefidata"
-                required
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-                hasFeedback
-              >
-                <Input readOnly />
-              </Form.Item>
-
-              <Form.Item style={{ marginTop: 30 }}>
-                <Button
-                  type="primary"
-                  onClick={depositHandler}
-                  loading={smartContractLoading}
-                  block
-                >
-                  Write
-                </Button>
-              </Form.Item>
-            </Form>
-          </Col>
-        </Row>
-      ),
-      showArrow: false,
-    },
-  ];
-
-  const withdrawItems: CollapseProps['items'] = [
-    {
-      key: '1',
-      label: '2. withdraw',
-      children: (
-        <Row gutter={[16, 8]}>
-          <Col className="gutter-row" xs={24}>
-            <Form
-              layout="vertical"
-              initialValues={{
-                shares: '',
-                receiver: account?.address || '',
-                owner: account?.address || '',
-                purefidata: purefiPackage ?? '',
-              }}
-              form={withdrawForm}
-              onValuesChange={withdrawFormChangeHandler}
-              autoComplete="off"
-            >
-              <Form.Item
-                label="shares (uint256)"
-                name="shares"
-                required
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-                hasFeedback
-              >
-                <Input />
-              </Form.Item>
-
-              <Form.Item
-                label="receiver (address)"
-                name="receiver"
-                required
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-                hasFeedback
-              >
-                <Input />
-              </Form.Item>
-
-              <Form.Item
-                label="owner (address)"
-                name="owner"
-                required
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-                hasFeedback
-              >
-                <Input />
-              </Form.Item>
-
-              <Form.Item
-                label="_purefidata (bytes)"
-                name="purefidata"
-                required
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-                hasFeedback
-              >
-                <Input readOnly />
-              </Form.Item>
-
-              <Form.Item style={{ marginTop: 30 }}>
-                <Button
-                  type="primary"
-                  onClick={withdrawHandler}
-                  loading={smartContractLoading}
-                  block
-                >
-                  Write
-                </Button>
-              </Form.Item>
-            </Form>
-          </Col>
-        </Row>
-      ),
-      showArrow: false,
-    },
-  ];
-
-  const whitelistItems: CollapseProps['items'] = [
-    {
-      key: '1',
-      label: '3. whitelist',
-      children: (
-        <Row gutter={[16, 8]}>
-          <Col className="gutter-row" xs={24}>
-            <Form
-              layout="vertical"
-              initialValues={{
-                purefidata: purefiPackage ?? '',
-              }}
-              form={whitelistForm}
-              onValuesChange={whitelistFormChangeHandler}
-              autoComplete="off"
-            >
-              <Form.Item
-                label="_purefidata (bytes)"
-                name="purefidata"
-                required
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-                hasFeedback
-              >
-                <Input readOnly />
-              </Form.Item>
-
-              <Form.Item style={{ marginTop: 30 }}>
-                <Button
-                  type="primary"
-                  onClick={whitelistHandler}
-                  loading={smartContractLoading}
-                  block
-                >
-                  Write
-                </Button>
-              </Form.Item>
-            </Form>
-          </Col>
-        </Row>
-      ),
-      showArrow: false,
-    },
-  ];
 
   return (
     <div className={styles.playground}>
@@ -2586,44 +1894,8 @@ const Playground: FC = () => {
             </Row>
           </Card>
 
-          <Card title={smartContractTitle} size="small" ref={ref5}>
-            <Row gutter={[16, 8]}>
-              <Col className="gutter-row" xs={24} lg={12}>
-                <Form
-                  layout="vertical"
-                  form={smartContractForm}
-                  initialValues={{
-                    smartContractAddress: toAddressValue || '',
-                  }}
-                  onValuesChange={smartContractFormChangeHandler}
-                  autoComplete="off"
-                >
-                  <Form.Item
-                    label="Smart Contract (Address)"
-                    name="smartContractAddress"
-                    required
-                    rules={[
-                      {
-                        required: true,
-                      },
-                      {
-                        pattern: /^(0x)[0-9a-fA-F]{40}$/,
-                        message: 'Smart Contract (Address) Invalid',
-                      },
-                    ]}
-                    hasFeedback
-                  >
-                    <Input />
-                  </Form.Item>
-                </Form>
-
-                <Collapse items={depositItems} style={{ marginBottom: 10 }} />
-
-                <Collapse items={withdrawItems} style={{ marginBottom: 10 }} />
-
-                <Collapse items={whitelistItems} style={{ marginBottom: 10 }} />
-              </Col>
-            </Row>
+          <Card title="4. Transaction Builder" size="small" ref={ref5}>
+            <TransactionBuilder contractAddress={toAddressValue} />
           </Card>
         </Space>
       )}
@@ -2820,99 +2092,6 @@ const Playground: FC = () => {
                     ]}
                   />
                 </div>
-              )}
-            </>
-          )}
-        </Flex>
-      </Modal>
-
-      <Modal
-        title="Smart Contract"
-        open={isSmartContractModalOpen}
-        onCancel={closeSmartContractModalHandler}
-        footer={null}
-        maskClosable={false}
-        destroyOnClose
-        centered
-      >
-        <Flex align="center" gap="20px" vertical style={{ marginTop: 40 }}>
-          {smartContractLoading && (
-            <>
-              {!txnHash ? (
-                <Flex align="center" gap="20px" vertical>
-                  <LoadingOutlined style={{ fontSize: 40 }} />
-                  <Typography.Text type="secondary">
-                    Proceed in your wallet
-                  </Typography.Text>
-                </Flex>
-              ) : (
-                <Flex align="center" gap="20px" vertical>
-                  <LoadingOutlined style={{ fontSize: 40 }} />
-                  <Typography.Text type="secondary">Pending...</Typography.Text>
-                </Flex>
-              )}
-            </>
-          )}
-
-          {!smartContractLoading && (
-            <>
-              {smartContractError !== null ? (
-                <Result
-                  status="error"
-                  title="Error!"
-                  subTitle={smartContractError}
-                  extra={[
-                    !!txnHash && (
-                      <Button
-                        style={{ marginBottom: 10 }}
-                        type="link"
-                        icon={<ExportOutlined />}
-                        onClick={() =>
-                          openTxnLink(
-                            getTransactionLink(txnHash!, account.chain)
-                          )
-                        }
-                      >
-                        <span>TXN</span>
-                      </Button>
-                    ),
-                    <Button
-                      type="primary"
-                      onClick={closeSmartContractModalHandler}
-                      block
-                    >
-                      OK
-                    </Button>,
-                  ]}
-                />
-              ) : (
-                <Result
-                  status={
-                    txnReceipt?.status === 'success' ? 'success' : 'error'
-                  }
-                  title={
-                    txnReceipt?.status === 'success' ? 'Success!' : 'Error!'
-                  }
-                  extra={[
-                    <Button
-                      style={{ marginBottom: 10 }}
-                      type="link"
-                      icon={<ExportOutlined />}
-                      onClick={() =>
-                        openTxnLink(getTransactionLink(txnHash!, account.chain))
-                      }
-                    >
-                      <span>TXN</span>
-                    </Button>,
-                    <Button
-                      type="primary"
-                      onClick={closeSmartContractModalHandler}
-                      block
-                    >
-                      OK
-                    </Button>,
-                  ]}
-                />
               )}
             </>
           )}
