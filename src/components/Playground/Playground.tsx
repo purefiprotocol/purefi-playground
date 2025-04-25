@@ -130,7 +130,7 @@ const PACKAGE_TYPE_OPTIONS = [
     ],
   },
   {
-    label: '+ Intermediary',
+    label: '+ Intermediary (Coming soon)',
     title: 'Intermediary',
     options: [
       {
@@ -138,12 +138,14 @@ const PACKAGE_TYPE_OPTIONS = [
         value: '128',
         desc: 'rule, from, to, intermediary',
         title: 'Type 128 (rule, from, to, intermediary)',
+        disabled: true,
       },
       {
         label: 'Type 160',
         value: '160',
         desc: 'rule, from, to, intermediary, tokenData0',
         title: 'Type 160 (rule, from, to, intermediary, tokenData0)',
+        disabled: true,
       },
       {
         label: 'Type 176',
@@ -151,11 +153,12 @@ const PACKAGE_TYPE_OPTIONS = [
         desc: 'rule, from, to, intermediary, tokenData0, tokenData1',
         title:
           'Type 176 (rule, from, to, intermediary, tokenData0, tokenData1)',
+        disabled: true,
       },
     ],
   },
   {
-    label: '+ Payee',
+    label: '+ Payee (Coming soon)',
     title: 'Payee',
     options: [
       {
@@ -163,12 +166,14 @@ const PACKAGE_TYPE_OPTIONS = [
         value: '64',
         desc: 'rule, from, to, payee, paymentData',
         title: 'Type 64 (rule, from, to, payee, paymentData)',
+        disabled: true,
       },
       {
         label: 'Type 96',
         value: '96',
         desc: 'rule, from, to, payee, paymentData, tokenData0',
         title: 'Type 96 (rule, from, to, payee, paymentData, tokenData0)',
+        disabled: true,
       },
       {
         label: 'Type 112',
@@ -176,11 +181,12 @@ const PACKAGE_TYPE_OPTIONS = [
         desc: 'rule, from, to, payee, paymentData, tokenData0, tokenData1',
         title:
           'Type 112 (rule, from, to, payee, paymentData, tokenData0, tokenData1)',
+        disabled: true,
       },
     ],
   },
   {
-    label: '+ Intermediary + Payee',
+    label: '+ Intermediary + Payee (Coming soon)',
     title: 'Intermediary & Payee',
     options: [
       {
@@ -188,6 +194,7 @@ const PACKAGE_TYPE_OPTIONS = [
         value: '192',
         desc: 'rule, from, to, intermediary, payee, paymentData',
         title: 'Type 192 (rule, from, to, intermediary, payee, paymentData)',
+        disabled: true,
       },
       {
         label: 'Type 224',
@@ -195,6 +202,7 @@ const PACKAGE_TYPE_OPTIONS = [
         desc: 'rule, from, to, intermediary, payee, paymentData, tokenData0',
         title:
           'Type 224 (rule, from, to, intermediary, payee, paymentData, tokenData0)',
+        disabled: true,
       },
       {
         label: 'Type 240',
@@ -202,6 +210,7 @@ const PACKAGE_TYPE_OPTIONS = [
         desc: 'rule, from, to, intermediary, payee, paymentData, tokenData0, tokenData1',
         title:
           'Type 240 (rule, from, to, intermediary, payee, paymentData, tokenData0, tokenData1)',
+        disabled: true,
       },
     ],
   },
@@ -1756,6 +1765,7 @@ const Playground: FC = () => {
                           value: SignatureType.BABYJUBJUB,
                           label: SignatureType.BABYJUBJUB.toUpperCase(),
                           title: SignatureType.BABYJUBJUB,
+                          disabled: true,
                         },
                       ]}
                       block
