@@ -96,7 +96,7 @@ interface VerificationProcessFormFields {
   signatureType?: string;
 }
 
-const ISSUER_API_URL_STAGE = import.meta.env.VITE_ISSUER_API_URL_STAGE;
+const ISSUER_API_URL = import.meta.env.VITE_ISSUER_API_URL_STAGE;
 const PUREFI_DEMO_CONTRACT = import.meta.env.VITE_PUREFI_DEMO_CONTRACT;
 
 const PACKAGE_TYPE_OPTIONS = [
@@ -1732,7 +1732,7 @@ const Playground: FC = () => {
                   form={verificationProcessForm}
                   initialValues={{
                     signatureType: SignatureType.ECDSA,
-                    issuerUrl: ISSUER_API_URL_STAGE,
+                    issuerUrl: ISSUER_API_URL,
                   }}
                   onValuesChange={verificationProcessFormChangeHandler}
                   autoComplete="off"
@@ -1769,9 +1769,9 @@ const Playground: FC = () => {
                       optionType="button"
                       options={[
                         {
-                          value: ISSUER_API_URL_STAGE,
+                          value: ISSUER_API_URL,
                           label: 'STAGE',
-                          title: `${ISSUER_API_URL_STAGE}/v5/rule`,
+                          title: `${ISSUER_API_URL}/v5/rule`,
                         },
                       ]}
                       block
