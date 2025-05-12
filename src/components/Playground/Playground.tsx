@@ -96,8 +96,7 @@ interface VerificationProcessFormFields {
   signatureType?: string;
 }
 
-const ISSUER_API_URL = import.meta.env.VITE_ISSUER_API_URL_STAGE;
-const PUREFI_DEMO_CONTRACT = import.meta.env.VITE_PUREFI_DEMO_CONTRACT;
+const ISSUER_API_URL = import.meta.env.VITE_ISSUER_API_URL_PROD;
 
 const PACKAGE_TYPE_OPTIONS = [
   {
@@ -216,14 +215,6 @@ const PRESET_TYPE_OPTIONS = [
     label: 'Custom',
     value: PresetTypeEnum.CUSTOM,
   },
-  {
-    label: 'PureFi AML',
-    value: PresetTypeEnum.PUREFI_AML,
-  },
-  {
-    label: 'PureFi KYC',
-    value: PresetTypeEnum.PUREFI_KYC,
-  },
 ];
 
 const IMPLEMENTATION_OPTIONS = [
@@ -260,7 +251,7 @@ const Playground: FC = () => {
   const steps: TourProps['steps'] = [
     {
       title: 'Step 1. Payload Constructor',
-      description: 'Construct Rule Payload or use predefined PureFi presets',
+      description: 'Construct Rule Payload',
       target: () => ref1.current,
     },
     {
@@ -360,63 +351,6 @@ const Playground: FC = () => {
   const [verificationLoading, setVerificationLoading] = useState(false);
 
   useEffect(() => {
-    if (presetType === PresetTypeEnum.PUREFI_AML) {
-      payloadForm.setFields([
-        {
-          name: 'packageType',
-          value: '32',
-        },
-        {
-          name: 'ruleId',
-          value: '431050',
-        },
-        {
-          name: 'toAddress',
-          value: PUREFI_DEMO_CONTRACT,
-        },
-        {
-          name: 'token0Address',
-          value: zeroAddress,
-        },
-        {
-          name: 'token0Value',
-          value: '0.001',
-        },
-        {
-          name: 'token0Decimals',
-          value: 18,
-        },
-      ]);
-      validatePayloadHandler();
-    } else if (presetType === PresetTypeEnum.PUREFI_KYC) {
-      payloadForm.setFields([
-        {
-          name: 'packageType',
-          value: '32',
-        },
-        {
-          name: 'ruleId',
-          value: '731',
-        },
-        {
-          name: 'toAddress',
-          value: PUREFI_DEMO_CONTRACT,
-        },
-        {
-          name: 'token0Address',
-          value: zeroAddress,
-        },
-        {
-          name: 'token0Value',
-          value: '0.001',
-        },
-        {
-          name: 'token0Decimals',
-          value: 18,
-        },
-      ]);
-      validatePayloadHandler();
-    }
     setPurefiPayload(null);
     setPurefiPackage(null);
   }, [presetType]);
@@ -886,7 +820,7 @@ const Playground: FC = () => {
       <Col className="gutter-row" xs={24} lg={12}>
         <Form.Item
           label="Presets"
-          tooltip="Construct custom payload or see in action a couple of predefined PureFi presets"
+          tooltip="Construct custom payload"
           colon={false}
           style={{ margin: '16px 0' }}
         >
@@ -1770,7 +1704,7 @@ const Playground: FC = () => {
                       options={[
                         {
                           value: ISSUER_API_URL,
-                          label: 'STAGE',
+                          label: 'PROD',
                           title: `${ISSUER_API_URL}/v5/rule`,
                         },
                       ]}

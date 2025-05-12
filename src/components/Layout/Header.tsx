@@ -26,7 +26,7 @@ const Navbar: FC = () => {
     setIsDrawerOpen(false);
   };
 
-  const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL_STAGE;
+  const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL_PROD;
 
   return (
     <>
