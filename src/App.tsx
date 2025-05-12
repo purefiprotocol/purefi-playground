@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { KycWidget } from '@purefi/kyc-sdk';
 import { toast } from 'react-toastify';
 import { ConfigProvider } from 'antd';
-import { sepolia } from 'viem/chains';
 import {
   wagmiAdapter,
   PROJECT_ID,
@@ -17,7 +16,6 @@ import {
 
 import { Layout } from '@/components';
 import { Home, Kyc, NotFound } from '@/pages';
-import sepoliaSrc from './assets/sepolia.png';
 
 const queryClient = new QueryClient();
 
@@ -29,7 +27,7 @@ createAppKit({
   metadata: wagmiMetadata,
   allowUnsupportedChain: false,
   chainImages: {
-    [sepolia.id]: sepoliaSrc,
+    // [sepolia.id]: sepoliaSrc,
   },
   allWallets: 'SHOW',
   features: {
@@ -45,7 +43,7 @@ createAppKit({
 const App: FC = () => {
   useEffect(() => {
     KycWidget.setConfig({
-      issuerUrl: import.meta.env.VITE_ISSUER_API_URL_STAGE,
+      issuerUrl: import.meta.env.VITE_ISSUER_API_URL_PROD,
       onSuccess: toast.success,
       onWarning: toast.warn,
       onError: toast.error,

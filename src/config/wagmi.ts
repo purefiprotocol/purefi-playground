@@ -5,9 +5,9 @@ import { CHAINS } from './chains';
 const PROJECT_ID = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID;
 
 const wagmiMetadata = {
-  name: 'PureFi | Playground',
-  description: 'PureFi | Playground',
-  url: 'https://playground.purefi.io',
+  name: 'PureFi | Prod Playground',
+  description: 'PureFi | Prod Playground',
+  url: 'https://prod.playground.purefi.io',
   icons: [
     'https://user-images.githubusercontent.com/23620645/136548302-6bf7f6e0-8236-44bf-b75a-9c067e9347da.png',
   ],
