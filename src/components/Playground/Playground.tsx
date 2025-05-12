@@ -1749,12 +1749,12 @@ const Playground: FC = () => {
                           label: SignatureType.ECDSA.toUpperCase(),
                           title: SignatureType.ECDSA,
                         },
-                        {
-                          value: SignatureType.BABYJUBJUB,
-                          label: SignatureType.BABYJUBJUB.toUpperCase(),
-                          title: SignatureType.BABYJUBJUB,
-                          disabled: true,
-                        },
+                        // {
+                        //   value: SignatureType.BABYJUBJUB,
+                        //   label: SignatureType.BABYJUBJUB.toUpperCase(),
+                        //   title: SignatureType.BABYJUBJUB,
+                        //   disabled: true,
+                        // },
                       ]}
                       block
                     />
