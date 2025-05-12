@@ -26,8 +26,7 @@ const Navbar: FC = () => {
     setIsDrawerOpen(false);
   };
 
-  const DASHBOARD_URL_STAGE = import.meta.env.VITE_DASHBOARD_URL_STAGE;
-  const DASHBOARD_URL_PROD = import.meta.env.VITE_DASHBOARD_URL_PROD;
+  const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL_STAGE;
 
   return (
     <>
@@ -74,7 +73,7 @@ const Navbar: FC = () => {
                 <div className={styles.nav__item}>
                   <a
                     className={styles.nav__link}
-                    href={DASHBOARD_URL_STAGE}
+                    href={DASHBOARD_URL}
                     rel="noopener norefferer"
                     target="_blank"
                   >
@@ -127,7 +126,7 @@ const Navbar: FC = () => {
           <div className={styles.nav__item}>
             <a
               className={styles.nav__link}
-              href={DASHBOARD_URL_STAGE}
+              href={DASHBOARD_URL}
               rel="noopener norefferer"
               target="_blank"
             >
