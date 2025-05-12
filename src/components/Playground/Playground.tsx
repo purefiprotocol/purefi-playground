@@ -1,5 +1,5 @@
 import { FC, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   PureFI,
@@ -37,7 +37,6 @@ import {
   BaseError,
   createWalletClient,
   custom,
-  http,
   parseUnits,
   zeroAddress,
 } from 'viem';
@@ -45,7 +44,6 @@ import {
 import { useAccount } from 'wagmi';
 
 import { checkIfChainSupported, sleep } from '@/utils';
-import { useMediaQuery } from 'react-responsive';
 import {
   ExportOutlined,
   FireOutlined,
@@ -99,9 +97,6 @@ interface VerificationProcessFormFields {
 }
 
 const ISSUER_API_URL_STAGE = import.meta.env.VITE_ISSUER_API_URL_STAGE;
-const DASHBOARD_URL_STAGE = import.meta.env.VITE_DASHBOARD_URL_STAGE;
-const ISSUER_API_URL_PROD = import.meta.env.VITE_ISSUER_API_URL_PROD;
-const DASHBOARD_URL_PROD = import.meta.env.VITE_DASHBOARD_URL_PROD;
 const PUREFI_DEMO_CONTRACT = import.meta.env.VITE_PUREFI_DEMO_CONTRACT;
 
 const PACKAGE_TYPE_OPTIONS = [
@@ -245,9 +240,7 @@ const IMPLEMENTATION_OPTIONS = [
 ];
 
 const Playground: FC = () => {
-  const isMobile = useMediaQuery({
-    query: '(max-width: 992px)',
-  });
+  const navigate = useNavigate();
 
   const ref1 = useRef(null);
   const ref2 = useRef(null);
@@ -944,13 +937,8 @@ const Playground: FC = () => {
     await payloadForm.validateFields();
   };
 
-  const proceedToDashboard = () => {
-    const dashboardUrl =
-      issuerUrlValue === ISSUER_API_URL_STAGE
-        ? DASHBOARD_URL_STAGE
-        : DASHBOARD_URL_PROD;
-    const specificDashboardUrl = `${dashboardUrl}/kyc`;
-    window.open(specificDashboardUrl, '_blank');
+  const proceedToVerification = () => {
+    navigate('/kyc');
   };
 
   return (
@@ -1785,12 +1773,6 @@ const Playground: FC = () => {
                           label: 'STAGE',
                           title: `${ISSUER_API_URL_STAGE}/v5/rule`,
                         },
-                        {
-                          value: ISSUER_API_URL_PROD,
-                          label: 'PROD',
-                          title: `${ISSUER_API_URL_PROD}/v5/rule`,
-                          disabled: true,
-                        },
                       ]}
                       block
                     />
@@ -2055,14 +2037,13 @@ const Playground: FC = () => {
                     <Result
                       status="warning"
                       title="Additional Verification Required"
-                      subTitle="Proceed to PureFi Dashboard"
                       extra={
                         <Button
                           type="primary"
-                          onClick={proceedToDashboard}
+                          onClick={proceedToVerification}
                           block
                         >
-                          PureFi Dashboard <ExportOutlined />
+                          Start
                         </Button>
                       }
                     />

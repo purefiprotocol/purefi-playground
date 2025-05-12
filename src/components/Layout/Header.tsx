@@ -54,6 +54,11 @@ const Navbar: FC = () => {
                   </NavLink>
                 </div>
                 <div className={styles.nav__item}>
+                  <NavLink className={styles.nav__link} to="/kyc">
+                    Compliance Widget
+                  </NavLink>
+                </div>
+                <div className={styles.nav__item}>
                   <a
                     className={styles.nav__link}
                     href="https://docs.purefi.io/"
@@ -74,20 +79,7 @@ const Navbar: FC = () => {
                     target="_blank"
                   >
                     <Flex gap={8} align="center">
-                      <span>Stage Dashboard</span>
-                      <ExportOutlined />
-                    </Flex>
-                  </a>
-                </div>
-                <div className={styles.nav__item}>
-                  <a
-                    className={styles.nav__link}
-                    href={DASHBOARD_URL_PROD}
-                    rel="noopener norefferer"
-                    target="_blank"
-                  >
-                    <Flex gap={8} align="center">
-                      <span>Prod Dashboard</span>
+                      <span>Dashboard</span>
                       <ExportOutlined />
                     </Flex>
                   </a>
@@ -115,6 +107,11 @@ const Navbar: FC = () => {
             </NavLink>
           </div>
           <div className={styles.nav__item}>
+            <NavLink className={styles.nav__link} to="/kyc">
+              Compliance Widget
+            </NavLink>
+          </div>
+          <div className={styles.nav__item}>
             <a
               className={styles.nav__link}
               href="https://docs.purefi.io/"
@@ -135,20 +132,7 @@ const Navbar: FC = () => {
               target="_blank"
             >
               <Flex gap={8} align="center">
-                <span>Stage Dashboard</span>
-                <ExportOutlined />
-              </Flex>
-            </a>
-          </div>
-          <div className={styles.nav__item}>
-            <a
-              className={styles.nav__link}
-              href={DASHBOARD_URL_PROD}
-              rel="noopener norefferer"
-              target="_blank"
-            >
-              <Flex gap={8} align="center">
-                <span>Prod Dashboard</span>
+                <span>Dashboard</span>
                 <ExportOutlined />
               </Flex>
             </a>

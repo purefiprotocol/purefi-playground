@@ -1,11 +1,12 @@
-import React, { FC } from 'react';
+import React, { FC, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { createAppKit } from '@reown/appkit/react';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { KycWidget } from '@purefi/kyc-sdk';
+import { toast } from 'react-toastify';
 import { ConfigProvider } from 'antd';
 import { sepolia } from 'viem/chains';
-
 import {
   wagmiAdapter,
   PROJECT_ID,
@@ -15,7 +16,7 @@ import {
 } from '@/config';
 
 import { Layout } from '@/components';
-import { Home, NotFound } from '@/pages';
+import { Home, Kyc, NotFound } from '@/pages';
 import sepoliaSrc from './assets/sepolia.png';
 
 const queryClient = new QueryClient();
@@ -42,6 +43,16 @@ createAppKit({
 });
 
 const App: FC = () => {
+  useEffect(() => {
+    KycWidget.setConfig({
+      issuerUrl: import.meta.env.VITE_ISSUER_API_URL_STAGE,
+      onSuccess: toast.success,
+      onWarning: toast.warn,
+      onError: toast.error,
+      onInfo: toast.info,
+    });
+  }, []);
+
   return (
     <React.StrictMode>
       <ConfigProvider>
@@ -51,6 +62,7 @@ const App: FC = () => {
               <Routes>
                 <Route path="/" element={<Layout />}>
                   <Route index element={<Home />} />
+                  <Route path="/kyc" element={<Kyc />} />
                   <Route path="*" element={<NotFound />} />
                 </Route>
               </Routes>
