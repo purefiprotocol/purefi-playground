@@ -26,3 +26,12 @@ export const sleep = async (ms = 100) => {
     }, ms);
   });
 };
+
+export const slugify = (text: string) => {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^-\w]+/g, '')
+    .replace(/--+/g, '-');
+};
