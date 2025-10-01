@@ -35,3 +35,5 @@ export const slugify = (text: string) => {
     .replace(/[^-\w]+/g, '')
     .replace(/--+/g, '-');
 };
+
+export const uniqueArray = (array: number[]) => [...new Set(array)];
