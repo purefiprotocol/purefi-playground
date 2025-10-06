@@ -153,7 +153,7 @@ const PACKAGE_TYPE_OPTIONS = [
     ],
   },
   {
-    label: '+ Payee (Coming soon)',
+    label: '+ Payee',
     title: 'Payee',
     options: [
       {
@@ -161,14 +161,14 @@ const PACKAGE_TYPE_OPTIONS = [
         value: '64',
         desc: 'rule, from, to, payee, paymentData',
         title: 'Type 64 (rule, from, to, payee, paymentData)',
-        disabled: true,
+        disabled: false,
       },
       {
         label: 'Type 96',
         value: '96',
         desc: 'rule, from, to, payee, paymentData, tokenData0',
         title: 'Type 96 (rule, from, to, payee, paymentData, tokenData0)',
-        disabled: true,
+        disabled: false,
       },
       {
         label: 'Type 112',
@@ -176,7 +176,7 @@ const PACKAGE_TYPE_OPTIONS = [
         desc: 'rule, from, to, payee, paymentData, tokenData0, tokenData1',
         title:
           'Type 112 (rule, from, to, payee, paymentData, tokenData0, tokenData1)',
-        disabled: true,
+        disabled: false,
       },
     ],
   },
