@@ -125,34 +125,6 @@ const PACKAGE_TYPE_OPTIONS = [
     ],
   },
   {
-    label: '+ Intermediary (Coming soon)',
-    title: 'Intermediary',
-    options: [
-      {
-        label: 'Type 128',
-        value: '128',
-        desc: 'rule, from, to, intermediary',
-        title: 'Type 128 (rule, from, to, intermediary)',
-        disabled: true,
-      },
-      {
-        label: 'Type 160',
-        value: '160',
-        desc: 'rule, from, to, intermediary, tokenData0',
-        title: 'Type 160 (rule, from, to, intermediary, tokenData0)',
-        disabled: true,
-      },
-      {
-        label: 'Type 176',
-        value: '176',
-        desc: 'rule, from, to, intermediary, tokenData0, tokenData1',
-        title:
-          'Type 176 (rule, from, to, intermediary, tokenData0, tokenData1)',
-        disabled: true,
-      },
-    ],
-  },
-  {
     label: '+ Payee',
     title: 'Payee',
     options: [
@@ -177,6 +149,34 @@ const PACKAGE_TYPE_OPTIONS = [
         title:
           'Type 112 (rule, from, to, payee, paymentData, tokenData0, tokenData1)',
         disabled: false,
+      },
+    ],
+  },
+  {
+    label: '+ Intermediary (Coming soon)',
+    title: 'Intermediary',
+    options: [
+      {
+        label: 'Type 128',
+        value: '128',
+        desc: 'rule, from, to, intermediary',
+        title: 'Type 128 (rule, from, to, intermediary)',
+        disabled: true,
+      },
+      {
+        label: 'Type 160',
+        value: '160',
+        desc: 'rule, from, to, intermediary, tokenData0',
+        title: 'Type 160 (rule, from, to, intermediary, tokenData0)',
+        disabled: true,
+      },
+      {
+        label: 'Type 176',
+        value: '176',
+        desc: 'rule, from, to, intermediary, tokenData0, tokenData1',
+        title:
+          'Type 176 (rule, from, to, intermediary, tokenData0, tokenData1)',
+        disabled: true,
       },
     ],
   },
