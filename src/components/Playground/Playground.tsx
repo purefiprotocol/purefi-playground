@@ -1154,7 +1154,27 @@ const Playground: FC = () => {
                   </Form.Item>
 
                   <Form.Item
-                    label="Payee (Address)"
+                    label={
+                      <Flex gap="4px" align="baseline">
+                        <div>Payee (Address)</div>
+                        {!!account?.address && (
+                          <Button
+                            type="link"
+                            onClick={() => {
+                              payloadForm.setFields([
+                                {
+                                  name: 'payeeAddress',
+                                  value: account.address!,
+                                },
+                              ]);
+                              payloadForm.validateFields(['payeeAddress']);
+                            }}
+                          >
+                            (Injected)
+                          </Button>
+                        )}
+                      </Flex>
+                    }
                     name="payeeAddress"
                     hidden={isPayeeHidden}
                     dependencies={['packageType']}
@@ -1354,7 +1374,27 @@ const Playground: FC = () => {
                   <Row gutter={[16, 8]}>
                     <Col className="gutter-row" xs={24} lg={14}>
                       <Form.Item
-                        label="Token Payment (Address)"
+                        label={
+                          <Flex gap="4px" align="baseline">
+                            <div>Token Payment (Address)</div>
+                            <Button
+                              type="link"
+                              onClick={() => {
+                                payloadForm.setFields([
+                                  {
+                                    name: 'tokenPaymentAddress',
+                                    value: zeroAddress,
+                                  },
+                                ]);
+                                payloadForm.validateFields([
+                                  'tokenPaymentAddress',
+                                ]);
+                              }}
+                            >
+                              (Zero Address)
+                            </Button>
+                          </Flex>
+                        }
                         name="tokenPaymentAddress"
                         tooltip="Zero address means a native coin (ETH, POL, etc.)"
                         hidden={isTokenPaymentHidden}
@@ -1377,7 +1417,7 @@ const Playground: FC = () => {
                     </Col>
                     <Col className="gutter-row" xs={24} lg={5}>
                       <Form.Item
-                        label="Value"
+                        label={<div style={{ height: 32 }}>Value</div>}
                         name="tokenPaymentValue"
                         hidden={isTokenPaymentHidden}
                         dependencies={['packageType']}
@@ -1419,7 +1459,7 @@ const Playground: FC = () => {
                     </Col>
                     <Col className="gutter-row" xs={24} lg={5}>
                       <Form.Item
-                        label="Decimals"
+                        label={<div style={{ height: 32 }}>Decimals</div>}
                         name="tokenPaymentDecimals"
                         hidden={isTokenPaymentHidden}
                         rules={[
