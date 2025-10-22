@@ -129,12 +129,31 @@ const TransactionBuilder: FC<TransactionBuilderProps> = (props) => {
 
             openTransactionBuilderModalHandler();
 
+            const publicClient = createPublicClient(publicClientConfig);
+
             const walletClient = createWalletClient({
               chain: account.chain!,
               transport: custom((window as any).ethereum!),
             });
 
-            const args: any[] = paramsValue.map((param: any) => {
+            const methodItem = methodOptions.find(
+              (item) => item.value === methodValue
+            )!;
+
+            const methodData = JSON.parse(methodItem.data);
+
+            const methodName = methodData.name;
+
+            const theParamsValue = JSON.parse(JSON.stringify(paramsValue));
+
+            let theValue = 0n;
+
+            if (methodData.stateMutability === 'payable') {
+              const valueParam = theParamsValue.pop();
+              theValue = BigInt(valueParam[valueParam.name]);
+            }
+
+            const args: any[] = theParamsValue.map((param: any) => {
               let value = param[param.name];
               const type = param.type;
 
@@ -147,25 +166,18 @@ const TransactionBuilder: FC<TransactionBuilderProps> = (props) => {
               return value;
             });
 
-            const methodItem = methodOptions.find(
-              (item) => item.value === methodValue
-            )!;
-
-            const methodData = JSON.parse(methodItem.data);
-
-            const methodName = methodData.name;
-
-            const hash = await walletClient.writeContract({
+            const { request } = await publicClient.simulateContract({
               account: account.address!,
               address: contractAddressValue,
               abi: parsedAbi,
               functionName: methodName,
               args,
+              value: theValue,
             });
 
-            setTxnHash(hash);
+            const hash = await walletClient.writeContract(request);
 
-            const publicClient = createPublicClient(publicClientConfig);
+            setTxnHash(hash);
 
             const receipt = await publicClient.waitForTransactionReceipt({
               hash,
@@ -191,21 +203,21 @@ const TransactionBuilder: FC<TransactionBuilderProps> = (props) => {
   const [methodOptions, setMethodOptions] = useState<SelectOption[]>([]);
 
   useEffect(() => {
-    const newOptions = parsedAbi
-      .filter(
-        (item) => item.type === 'function' && item.stateMutability !== 'view'
-      )
-      .map((item) => {
-        const methodSignature = toFunctionSignature(item);
-        const methodSelector = toFunctionSelector(methodSignature);
+    const filtered = parsedAbi.filter(
+      (item) => item.type === 'function' && item.stateMutability !== 'view'
+    );
 
-        const option: SelectOption = {
-          label: `${item.name} (${methodSelector})`,
-          value: methodSelector,
-          data: JSON.stringify(item),
-        };
-        return option;
-      });
+    const newOptions = filtered.map((item) => {
+      const methodSignature = toFunctionSignature(item);
+      const methodSelector = toFunctionSelector(methodSignature);
+
+      const option: SelectOption = {
+        label: `${item.name} (${methodSelector})`,
+        value: methodSelector,
+        data: JSON.stringify(item),
+      };
+      return option;
+    });
 
     setMethodOptions(newOptions);
 
@@ -235,12 +247,23 @@ const TransactionBuilder: FC<TransactionBuilderProps> = (props) => {
         const { inputs } = parsedData;
 
         if (inputs) {
-          paramsForm.setFields([
+          const theInputs = JSON.parse(JSON.stringify(inputs));
+
+          if (parsedData?.stateMutability === 'payable') {
+            theInputs.push({
+              name: 'value',
+              type: 'uint256',
+            });
+          }
+
+          const newFields = [
             {
               name: 'params',
-              value: inputs,
+              value: theInputs,
             },
-          ]);
+          ];
+
+          paramsForm.setFields(newFields);
         } else {
           transactionBuilderForm.setFields([
             {
