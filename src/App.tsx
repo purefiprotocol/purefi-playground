@@ -54,23 +54,21 @@ const App: FC = () => {
   }, []);
 
   return (
-    <React.StrictMode>
-      <ConfigProvider>
-        <WagmiProvider config={wagmiAdapter.wagmiConfig}>
-          <QueryClientProvider client={queryClient}>
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Layout />}>
-                  <Route index element={<Home />} />
-                  <Route path="/kyc" element={<Kyc />} />
-                  <Route path="*" element={<NotFound />} />
-                </Route>
-              </Routes>
-            </BrowserRouter>
-          </QueryClientProvider>
-        </WagmiProvider>
-      </ConfigProvider>
-    </React.StrictMode>
+    <ConfigProvider>
+      <WagmiProvider config={wagmiAdapter.wagmiConfig}>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Layout />}>
+                <Route index element={<Home />} />
+                <Route path="/kyc" element={<Kyc />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </ConfigProvider>
   );
 };
 
