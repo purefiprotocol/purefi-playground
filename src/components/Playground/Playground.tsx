@@ -557,7 +557,7 @@ const Playground: FC = () => {
   const signatureProcessFormChangeHandler = (
     fields: SignatureProcessFields
   ) => {
-    console.log('signatureProcessForm', fields);
+    // console.log('signatureProcessForm', fields);
   };
 
   const [verificationProcessForm] = Form.useForm();
@@ -571,7 +571,7 @@ const Playground: FC = () => {
   const verificationProcessFormChangeHandler = (
     fields: VerificationProcessFormFields
   ) => {
-    console.log('verificationProcessForm', fields);
+    // console.log('verificationProcessForm', fields);
 
     if ('signatureType' in fields) {
       setPurefiPackage(null);
@@ -1020,7 +1020,7 @@ const Playground: FC = () => {
                       options={PACKAGE_TYPE_OPTIONS}
                       disabled={isPayloadReadonly}
                       optionRender={(option) => {
-                        console.log(option);
+                        // console.log(option);
 
                         return (
                           <Space>
